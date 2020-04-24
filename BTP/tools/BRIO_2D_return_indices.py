@@ -130,11 +130,10 @@ def make_hilbert_curve(
 @njit
 def sort_along_hilbert_curve(
     org_points,
-    temp_points,
     hilbert_arr,
+    p,
     new_indices,
     org_points_end,
-    p
 ):
     '''
      org_points : 2N x 1; points to be sorted
@@ -145,15 +144,15 @@ def sort_along_hilbert_curve(
     new_indices : N x 1 array
     '''
 
-    len_points = org_points_end
+    org_points_end
 
     min_x = org_points[0]
     min_y = org_points[1]
     max_x = org_points[0]
     max_y = org_points[1]
 
-    for i in range(len_points):
-        x = org_points[2*i]
+    for i in range(org_points_end):
+        x = org_points[2*i+0]
         y = org_points[2*i+1]
         if x < min_x:
             min_x = x
@@ -178,7 +177,7 @@ def sort_along_hilbert_curve(
 
     a = 2**p
 
-    for i in range(len_points):
+    for i in range(org_points_end):
         x = org_points[2*i]
         y = org_points[2*i+1]
 
@@ -187,12 +186,7 @@ def sort_along_hilbert_curve(
 
         new_indices[i] = hilbert_arr[int(x+a*y)]
 
-    new_indices[0:len_points] = np.argsort(new_indices[0:len_points])
-
-    for i in range(len_points):
-        idx = new_indices[i]
-        temp_points[2*i] = org_points[2*idx]
-        temp_points[2*i+1] = org_points[2*idx+1]
+    new_indices[0:org_points_end] = np.argsort(new_indices[0:org_points_end])
 
     return
 
@@ -200,17 +194,17 @@ def sort_along_hilbert_curve(
 @njit
 def final_assembly(
     points,
-    new_points,
     rounds,
     boundary_indices,
     points_left_old,
     points_left_new,
     hilbert_arr,
     org_points,
-    temp_points,
     new_indices,
-    p
+    p,
+    insertion_seq
 ):
+
     make_hilbert_curve(hilbert_arr, p)
 
     for i in range(len(boundary_indices)-1):
@@ -221,12 +215,12 @@ def final_assembly(
             org_points[2*org_points_end+1] = points[2*rounds[j]+1]
             org_points_end += 1
 
-        sort_along_hilbert_curve(org_points, temp_points, hilbert_arr,
-                                 new_indices, org_points_end, p)
+        sort_along_hilbert_curve(org_points, hilbert_arr, p,
+                                 new_indices, org_points_end)
 
         for j in range(boundary_indices[i+1]-1, boundary_indices[i]-1, -1):
-            new_points[2*j+0] = temp_points[2*(org_points_end-1)+0]
-            new_points[2*j+1] = temp_points[2*(org_points_end-1)+1]
+            org_points_idx = new_indices[org_points_end-1]
+            insertion_seq[j] = rounds[boundary_indices[i]+org_points_idx]
             org_points_end -= 1
 
     return
@@ -254,16 +248,15 @@ def make_BRIO(points):
         p = int(np.round(0.5*np.log2(max_number_of_points_in_a_round*0.1), 0))
 
     hilbert_arr = np.empty(2**(2*p), dtype=np.int64)
-    org_points = np.empty(2*max_number_of_points_in_a_round, dtype=np.float64)
-    temp_points = np.empty(2*max_number_of_points_in_a_round, dtype=np.float64)
+    org_points = np.empty(2*len_points, dtype=np.float64)
     new_indices = np.empty(max_number_of_points_in_a_round, dtype=np.int64)
-    new_points = np.empty(2*len_points, dtype=np.float64)
+    insertion_seq = np.empty(len_points, dtype=np.int64)
 
-    final_assembly(points, new_points, rounds, boundary_indices,
+    final_assembly(points, rounds, boundary_indices,
                    points_left_old, points_left_new, hilbert_arr,
-                   org_points, temp_points, new_indices, p)
+                   org_points, new_indices, p, insertion_seq)
 
-    return new_points
+    return insertion_seq
 
 
 def perf(N):
