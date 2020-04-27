@@ -233,6 +233,7 @@ def make_BRIO(points):
 
     rounds = np.empty(len_points, dtype=np.int64)
     points_left_old = np.arange(len_points, dtype=np.int64)
+    np.random.shuffle(points_left_old)
     points_left_new = np.empty(len_points, dtype=np.int64)
     boundary_indices = np.empty(num_rounds+1, dtype=np.int64)
 
@@ -242,10 +243,17 @@ def make_BRIO(points):
         boundary_indices[1:] - boundary_indices[0:-1]
     )
 
-    if max_number_of_points_in_a_round <= 2500:
+    # rho = 5  # number of points per cell
+    # if max_number_of_points_in_a_round <= int(rho*(2**(2*4))):
+    #     p = 4
+    # else:
+    #     p = int(np.ceil(0.5*np.log2(max_number_of_points_in_a_round/rho)))
+
+    rho = 5  # number of points per cell
+    if len_points <= int(rho*(2**(2*4))):
         p = 4
     else:
-        p = int(np.round(0.5*np.log2(max_number_of_points_in_a_round*0.1), 0))
+        p = int(np.ceil(0.5*np.log2(len_points/rho)))
 
     hilbert_arr = np.empty(2**(2*p), dtype=np.int64)
     org_points = np.empty(2*len_points, dtype=np.float64)

@@ -1,5 +1,5 @@
 import numpy as np
-import BTP.tools.BRIO_3D as BRIO
+import BTP.tools.BRIO_3D_new as BRIO
 
 
 def njit(f):
@@ -23,15 +23,15 @@ def _calculate_sub_dets(points, final_sub_dets):
                      final values.
     '''
 
-    abx_ = points[3]-points[0]  # b_x-a_x
-    aby_ = points[4]-points[1]  # b_y-a_y
-    abz_ = points[5]-points[2]  # b_z-a_z
-    acx_ = points[6]-points[0]  # c_x-a_x
-    acy_ = points[7]-points[1]  # c_y-a_y
-    acz_ = points[8]-points[2]  # c_z-a_z
-    adx_ = points[9]-points[0]  # d_x-a_x
-    ady_ = points[10]-points[1]  # d_y-a_y
-    adz_ = points[11]-points[2]  # d_z-a_z
+    abx_ = points[1, 0]-points[0, 0]  # b_x-a_x
+    aby_ = points[1, 1]-points[0, 1]  # b_y-a_y
+    abz_ = points[1, 2]-points[0, 2]  # b_z-a_z
+    acx_ = points[2, 0]-points[0, 0]  # c_x-a_x
+    acy_ = points[2, 1]-points[0, 1]  # c_y-a_y
+    acz_ = points[2, 2]-points[0, 2]  # c_z-a_z
+    adx_ = points[3, 0]-points[0, 0]  # d_x-a_x
+    ady_ = points[3, 1]-points[0, 1]  # d_y-a_y
+    adz_ = points[3, 2]-points[0, 2]  # d_z-a_z
     normsq_ba = abx_**2 + aby_**2 + abz_**2
     normsq_ca = acx_**2 + acy_**2 + acz_**2
     normsq_da = adx_**2 + ady_**2 + adz_**2
@@ -82,44 +82,44 @@ def _walk(
     '''
 
     gv_idx = 4
-    if vertices_ID[4*t_index+0] == gv:
+    if vertices_ID[t_index, 0] == gv:
         gv_idx = 0
-    elif vertices_ID[4*t_index+1] == gv:
+    elif vertices_ID[t_index, 1] == gv:
         gv_idx = 1
-    elif vertices_ID[4*t_index+2] == gv:
+    elif vertices_ID[t_index, 2] == gv:
         gv_idx = 2
-    elif vertices_ID[4*t_index+3] == gv:
+    elif vertices_ID[t_index, 3] == gv:
         gv_idx = 3
 
     if gv_idx != 4:
         # t_index is a ghost tet, in this case simply step into the adjacent
         # real tet.
-        t_index = neighbour_ID[4*t_index+gv_idx]//4
+        t_index = neighbour_ID[t_index, gv_idx]//4
 
-    point_x = points[3*point_id+0]
-    point_y = points[3*point_id+1]
-    point_z = points[3*point_id+2]
+    point_x = points[point_id, 0]
+    point_y = points[point_id, 1]
+    point_z = points[point_id, 2]
 
     while True:
         # i.e. t_index is a real tetrahedron
         t_op_index_in_t = 5
 
-        a = vertices_ID[4*t_index+0]
-        b = vertices_ID[4*t_index+1]
-        c = vertices_ID[4*t_index+2]
-        d = vertices_ID[4*t_index+3]
+        a = vertices_ID[t_index, 0]
+        b = vertices_ID[t_index, 1]
+        c = vertices_ID[t_index, 2]
+        d = vertices_ID[t_index, 3]
 
-        pdx_ = point_x - points[3*d+0]
-        pdy_ = point_y - points[3*d+1]
-        pdz_ = point_z - points[3*d+2]
+        pdx_ = point_x - points[d, 0]
+        pdy_ = point_y - points[d, 1]
+        pdz_ = point_z - points[d, 2]
 
-        bdx_ = points[3*b+0] - points[3*d+0]
-        bdy_ = points[3*b+1] - points[3*d+1]
-        bdz_ = points[3*b+2] - points[3*d+2]
+        bdx_ = points[b, 0] - points[d, 0]
+        bdy_ = points[b, 1] - points[d, 1]
+        bdz_ = points[b, 2] - points[d, 2]
 
-        cdx_ = points[3*c+0] - points[3*d+0]
-        cdy_ = points[3*c+1] - points[3*d+1]
-        cdz_ = points[3*c+2] - points[3*d+2]
+        cdx_ = points[c, 0] - points[d, 0]
+        cdy_ = points[c, 1] - points[d, 1]
+        cdz_ = points[c, 2] - points[d, 2]
 
         temp = pdx_*(bdy_*cdz_-bdz_*cdy_) - \
             pdy_*(bdx_*cdz_-bdz_*cdx_) + \
@@ -127,9 +127,9 @@ def _walk(
         if temp < 0:
             t_op_index_in_t = 0
         else:
-            adx_ = points[3*a+0] - points[3*d+0]
-            ady_ = points[3*a+1] - points[3*d+1]
-            adz_ = points[3*a+2] - points[3*d+2]
+            adx_ = points[a, 0] - points[d, 0]
+            ady_ = points[a, 1] - points[d, 1]
+            adz_ = points[a, 2] - points[d, 2]
 
             temp = pdx_*(cdy_*adz_-cdz_*ady_) - \
                 pdy_*(cdx_*adz_-cdz_*adx_) + \
@@ -143,33 +143,33 @@ def _walk(
                 if temp < 0:
                     t_op_index_in_t = 2
                 else:
-                    acx_ = points[3*a+0] - points[3*c+0]
-                    acy_ = points[3*a+1] - points[3*c+1]
-                    acz_ = points[3*a+2] - points[3*c+2]
+                    acx_ = points[a, 0] - points[c, 0]
+                    acy_ = points[a, 1] - points[c, 1]
+                    acz_ = points[a, 2] - points[c, 2]
 
-                    bcx_ = points[3*b+0] - points[3*c+0]
-                    bcy_ = points[3*b+1] - points[3*c+1]
-                    bcz_ = points[3*b+2] - points[3*c+2]
+                    bcx_ = points[b, 0] - points[c, 0]
+                    bcy_ = points[b, 1] - points[c, 1]
+                    bcz_ = points[b, 2] - points[c, 2]
 
-                    temp = (point_x-points[3*c+0])*(bcy_*acz_-bcz_*acy_) - \
-                           (point_y-points[3*c+1])*(bcx_*acz_-bcz_*acx_) + \
-                           (point_z-points[3*c+2])*(bcx_*acy_-bcy_*acx_)
+                    temp = (point_x-points[c, 0])*(bcy_*acz_-bcz_*acy_) - \
+                           (point_y-points[c, 1])*(bcx_*acz_-bcz_*acx_) + \
+                           (point_z-points[c, 2])*(bcx_*acy_-bcy_*acx_)
                     if temp < 0:
                         t_op_index_in_t = 3
 
         if t_op_index_in_t != 5:
-            t_index = neighbour_ID[4*t_index+t_op_index_in_t]//4
+            t_index = neighbour_ID[t_index, t_op_index_in_t]//4
         else:
             # point_id lies inside t_index
             break
 
-        if vertices_ID[4*t_index+0] == gv:
+        if vertices_ID[t_index, 0] == gv:
             break
-        elif vertices_ID[4*t_index+1] == gv:
+        elif vertices_ID[t_index, 1] == gv:
             break
-        elif vertices_ID[4*t_index+2] == gv:
+        elif vertices_ID[t_index, 2] == gv:
             break
-        elif vertices_ID[4*t_index+3] == gv:
+        elif vertices_ID[t_index, 3] == gv:
             break
 
     return t_index
@@ -201,61 +201,61 @@ def _cavity_helper(
     '''
 
     gv_idx = 4
-    if vertices_ID[4*t_index+0] == gv:
+    if vertices_ID[t_index, 0] == gv:
         gv_idx = 0
-    elif vertices_ID[4*t_index+1] == gv:
+    elif vertices_ID[t_index, 1] == gv:
         gv_idx = 1
-    elif vertices_ID[4*t_index+2] == gv:
+    elif vertices_ID[t_index, 2] == gv:
         gv_idx = 2
-    elif vertices_ID[4*t_index+3] == gv:
+    elif vertices_ID[t_index, 3] == gv:
         gv_idx = 3
 
-    point_x = points[3*point_id+0]
-    point_y = points[3*point_id+1]
-    point_z = points[3*point_id+2]
+    point_x = points[point_id, 0]
+    point_y = points[point_id, 1]
+    point_z = points[point_id, 2]
 
     if gv_idx != 4:
         # i.e. t_index is a ghost triangle
         if gv_idx == 0:
-            b_x = points[3*vertices_ID[4*t_index+1]+0]
-            b_y = points[3*vertices_ID[4*t_index+1]+1]
-            b_z = points[3*vertices_ID[4*t_index+1]+2]
-            c_x = points[3*vertices_ID[4*t_index+2]+0]
-            c_y = points[3*vertices_ID[4*t_index+2]+1]
-            c_z = points[3*vertices_ID[4*t_index+2]+2]
-            d_x = points[3*vertices_ID[4*t_index+3]+0]
-            d_y = points[3*vertices_ID[4*t_index+3]+1]
-            d_z = points[3*vertices_ID[4*t_index+3]+2]
+            b_x = points[vertices_ID[t_index, 1], 0]
+            b_y = points[vertices_ID[t_index, 1], 1]
+            b_z = points[vertices_ID[t_index, 1], 2]
+            c_x = points[vertices_ID[t_index, 2], 0]
+            c_y = points[vertices_ID[t_index, 2], 1]
+            c_z = points[vertices_ID[t_index, 2], 2]
+            d_x = points[vertices_ID[t_index, 3], 0]
+            d_y = points[vertices_ID[t_index, 3], 1]
+            d_z = points[vertices_ID[t_index, 3], 2]
         elif gv_idx == 1:
-            b_x = points[3*vertices_ID[4*t_index+2]+0]
-            b_y = points[3*vertices_ID[4*t_index+2]+1]
-            b_z = points[3*vertices_ID[4*t_index+2]+2]
-            c_x = points[3*vertices_ID[4*t_index+0]+0]
-            c_y = points[3*vertices_ID[4*t_index+0]+1]
-            c_z = points[3*vertices_ID[4*t_index+0]+2]
-            d_x = points[3*vertices_ID[4*t_index+3]+0]
-            d_y = points[3*vertices_ID[4*t_index+3]+1]
-            d_z = points[3*vertices_ID[4*t_index+3]+2]
+            b_x = points[vertices_ID[t_index, 2], 0]
+            b_y = points[vertices_ID[t_index, 2], 1]
+            b_z = points[vertices_ID[t_index, 2], 2]
+            c_x = points[vertices_ID[t_index, 0], 0]
+            c_y = points[vertices_ID[t_index, 0], 1]
+            c_z = points[vertices_ID[t_index, 0], 2]
+            d_x = points[vertices_ID[t_index, 3], 0]
+            d_y = points[vertices_ID[t_index, 3], 1]
+            d_z = points[vertices_ID[t_index, 3], 2]
         elif gv_idx == 2:
-            b_x = points[3*vertices_ID[4*t_index+0]+0]
-            b_y = points[3*vertices_ID[4*t_index+0]+1]
-            b_z = points[3*vertices_ID[4*t_index+0]+2]
-            c_x = points[3*vertices_ID[4*t_index+1]+0]
-            c_y = points[3*vertices_ID[4*t_index+1]+1]
-            c_z = points[3*vertices_ID[4*t_index+1]+2]
-            d_x = points[3*vertices_ID[4*t_index+3]+0]
-            d_y = points[3*vertices_ID[4*t_index+3]+1]
-            d_z = points[3*vertices_ID[4*t_index+3]+2]
+            b_x = points[vertices_ID[t_index, 0], 0]
+            b_y = points[vertices_ID[t_index, 0], 1]
+            b_z = points[vertices_ID[t_index, 0], 2]
+            c_x = points[vertices_ID[t_index, 1], 0]
+            c_y = points[vertices_ID[t_index, 1], 1]
+            c_z = points[vertices_ID[t_index, 1], 2]
+            d_x = points[vertices_ID[t_index, 3], 0]
+            d_y = points[vertices_ID[t_index, 3], 1]
+            d_z = points[vertices_ID[t_index, 3], 2]
         elif gv_idx == 3:
-            b_x = points[3*vertices_ID[4*t_index+0]+0]
-            b_y = points[3*vertices_ID[4*t_index+0]+1]
-            b_z = points[3*vertices_ID[4*t_index+0]+2]
-            c_x = points[3*vertices_ID[4*t_index+2]+0]
-            c_y = points[3*vertices_ID[4*t_index+2]+1]
-            c_z = points[3*vertices_ID[4*t_index+2]+2]
-            d_x = points[3*vertices_ID[4*t_index+1]+0]
-            d_y = points[3*vertices_ID[4*t_index+1]+1]
-            d_z = points[3*vertices_ID[4*t_index+1]+2]
+            b_x = points[vertices_ID[t_index, 0], 0]
+            b_y = points[vertices_ID[t_index, 0], 1]
+            b_z = points[vertices_ID[t_index, 0], 2]
+            c_x = points[vertices_ID[t_index, 2], 0]
+            c_y = points[vertices_ID[t_index, 2], 1]
+            c_z = points[vertices_ID[t_index, 2], 2]
+            d_x = points[vertices_ID[t_index, 1], 0]
+            d_y = points[vertices_ID[t_index, 1], 1]
+            d_z = points[vertices_ID[t_index, 1], 2]
 
         adx_ = point_x - d_x
         ady_ = point_y - d_y
@@ -280,13 +280,16 @@ def _cavity_helper(
             cby_ = c_y - b_y
             cbz_ = c_z - b_z
 
-            t0x, t0y, t0z = cross_pdt(cbx_, cby_, cbz_, -bdx_, -bdy_, -bdz_)
-            t1x, t1y, t1z = cross_pdt(t0x, t0y, t0z, cbx_, cby_, cbz_)
-            t2x, t2y, t2z = cross_pdt(-t0x, -t0y, -t0z, -bdx_, -bdy_, -bdz_)
+            # t0x, t0y, t0z = cross_pdt(cbx_, cby_, cbz_, -bdx_, -bdy_, -bdz_)
+            t0x, t0y, t0z = -cby_*bdz_+cbz_*bdy_, cbx_*bdz_-cbz_*bdx_, -cbx_*bdy_+cby_*bdx_
+            # t1x, t1y, t1z = cross_pdt(t0x, t0y, t0z, cbx_, cby_, cbz_)
+            t1x, t1y, t1z = t0y*cbz_-t0z*cby_, -t0x*cbz_+t0z*cbx_, t0x*cby_-t0y*cbx_
+            # t2x, t2y, t2z = cross_pdt(-t0x, -t0y, -t0z, -bdx_, -bdy_, -bdz_)
+            t2x, t2y, t2z = t0y*bdz_-t0z*bdy_, -t0x*bdz_+t0z*bdx_, t0x*bdy_-t0y*bdx_
 
-            normsq_db = bdx_**2+bdy_**2+bdz_**2
-            normsq_cb = cbx_**2+cby_**2+cbz_**2
-            normsq_t0 = t0x**2+t0y**2+t0z**2
+            normsq_db = bdx_**2 + bdy_**2 + bdz_**2
+            normsq_cb = cbx_**2 + cby_**2 + cbz_**2
+            normsq_t0 = t0x**2 + t0y**2 + t0z**2
 
             center_x = b_x + 0.5*(normsq_db*t1x + normsq_cb*t2x)/normsq_t0
             center_y = b_y + 0.5*(normsq_db*t1y + normsq_cb*t2y)/normsq_t0
@@ -304,16 +307,16 @@ def _cavity_helper(
         else:
             return False
     else:
-        a_x = points[3*vertices_ID[4*t_index+0]+0]
-        a_y = points[3*vertices_ID[4*t_index+0]+1]
-        a_z = points[3*vertices_ID[4*t_index+0]+2]
+        a_x = points[vertices_ID[t_index, 0], 0]
+        a_y = points[vertices_ID[t_index, 0], 1]
+        a_z = points[vertices_ID[t_index, 0], 2]
 
-        temp = (point_x - a_x)*sub_determinants[4*t_index+0] + \
-            (point_y - a_y)*sub_determinants[4*t_index+1] + \
-            (point_z - a_z)*sub_determinants[4*t_index+2] + \
+        temp = (point_x - a_x)*sub_determinants[t_index, 0] + \
+            (point_y - a_y)*sub_determinants[t_index, 1] + \
+            (point_z - a_z)*sub_determinants[t_index, 2] + \
             (
                 (point_x-a_x)**2 + (point_y-a_y)**2 + (point_z-a_z)**2
-            )*sub_determinants[4*t_index+3]
+            )*sub_determinants[t_index, 3]
 
         if temp >= 0:
             return True
@@ -374,7 +377,7 @@ def _identify_cavity(
 
     # Adding the first bad triangle, i.e. the enclosing triangle
     ic_bad_tet[ic_bad_tet_end] = t_index
-    sub_determinants[4*t_index+3] = 10
+    sub_determinants[t_index, 3] = 10
     ic_bad_tet_end += 1
 
     boundary_vtx_counter = 0
@@ -383,9 +386,9 @@ def _identify_cavity(
         t_index = ic_bad_tet[ic_idx]
 
         for j in range(4):
-            jth_nbr_idx = neighbour_ID[4*t_index+j]//4
+            jth_nbr_idx = neighbour_ID[t_index, j]//4
 
-            if sub_determinants[4*jth_nbr_idx+3] <= 0:
+            if sub_determinants[jth_nbr_idx, 3] <= 0:
                 # jth_nbr_idx has not been stored in the ic_bad_tet array yet.
                 inside_tet_flag = _cavity_helper(
                     point_id,
@@ -407,7 +410,7 @@ def _identify_cavity(
                     ic_bad_tet[ic_bad_tet_end] = jth_nbr_idx
                     ic_bad_tet_end += 1
 
-                    sub_determinants[4*jth_nbr_idx+3] = 10
+                    sub_determinants[jth_nbr_idx, 3] = 10
                 else:
                     # i.e. the j'th neighbour is a boundary tet.
                     if ic_boundary_tet_end >= ic_len_boundary_tet:
@@ -421,72 +424,67 @@ def _identify_cavity(
                         ic_boundary_tet = temp_arr2
 
                     ic_boundary_tet[ic_boundary_tet_end] = neighbour_ID[
-                        4*t_index + j
-                    ]
+                        t_index, j]
                     ic_boundary_tet_end += 1
 
                     # Storing the vertices of t_index that lie on the boundary
                     if ic_boundary_vtx_end >= ic_len_boundary_vtx:
                         temp_arr3 = np.empty(
-                            2*ic_len_boundary_vtx,
+                            shape=(2*ic_len_boundary_vtx, 3),
                             dtype=np.int64
                         )
                         for l in range(ic_boundary_vtx_end):
-                            temp_arr3[l] = ic_boundary_vtx[l]
+                            temp_arr3[l, 0] = ic_boundary_vtx[l, 0]
+                            temp_arr3[l, 1] = ic_boundary_vtx[l, 1]
+                            temp_arr3[l, 2] = ic_boundary_vtx[l, 2]
                         ic_len_boundary_vtx = 2*ic_len_boundary_vtx
                         ic_boundary_vtx = temp_arr3
 
                     if j % 2 == 0:
-                        ic_boundary_vtx[ic_boundary_vtx_end+0] = vertices_ID[
-                            4*t_index + (j+1) % 4
-                        ]
-                        ic_boundary_vtx[ic_boundary_vtx_end+1] = vertices_ID[
-                            4*t_index + (j+2) % 4
-                        ]
-                        ic_boundary_vtx[ic_boundary_vtx_end+2] = vertices_ID[
-                            4*t_index + (j+3) % 4
-                        ]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 0] = vertices_ID[
+                            t_index, (j+1) % 4]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 1] = vertices_ID[
+                            t_index, (j+2) % 4]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 2] = vertices_ID[
+                            t_index, (j+3) % 4]
                     else:
-                        ic_boundary_vtx[ic_boundary_vtx_end+0] = vertices_ID[
-                            4*t_index + (j+3) % 4
-                        ]
-                        ic_boundary_vtx[ic_boundary_vtx_end+1] = vertices_ID[
-                            4*t_index + (j+2) % 4
-                        ]
-                        ic_boundary_vtx[ic_boundary_vtx_end+2] = vertices_ID[
-                            4*t_index + (j+1) % 4
-                        ]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 0] = vertices_ID[
+                            t_index, (j+3) % 4]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 1] = vertices_ID[
+                            t_index, (j+2) % 4]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 2] = vertices_ID[
+                            t_index, (j+1) % 4]
 
                     if boundary_index[
-                        ic_boundary_vtx[ic_boundary_vtx_end+0]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 0]
                     ] == -1:
                         boundary_index[
-                            ic_boundary_vtx[ic_boundary_vtx_end+0]
+                            ic_boundary_vtx[ic_boundary_vtx_end, 0]
                         ] = boundary_vtx_counter
                         boundary_vtx_counter += 1
                     if boundary_index[
-                        ic_boundary_vtx[ic_boundary_vtx_end+1]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 1]
                     ] == -1:
                         boundary_index[
-                            ic_boundary_vtx[ic_boundary_vtx_end+1]
+                            ic_boundary_vtx[ic_boundary_vtx_end, 1]
                         ] = boundary_vtx_counter
                         boundary_vtx_counter += 1
                     if boundary_index[
-                        ic_boundary_vtx[ic_boundary_vtx_end+2]
+                        ic_boundary_vtx[ic_boundary_vtx_end, 2]
                     ] == -1:
                         boundary_index[
-                            ic_boundary_vtx[ic_boundary_vtx_end+2]
+                            ic_boundary_vtx[ic_boundary_vtx_end, 2]
                         ] = boundary_vtx_counter
                         boundary_vtx_counter += 1
 
-                    ic_boundary_vtx_end += 3
+                    ic_boundary_vtx_end += 1
 
         ic_idx += 1
         if ic_idx == ic_bad_tet_end:
             break
 
-    return ic_bad_tet, ic_bad_tet_end, ic_boundary_tet, \
-           ic_boundary_tet_end, ic_boundary_vtx, boundary_vtx_counter
+    return (ic_bad_tet, ic_bad_tet_end, ic_boundary_tet,
+            ic_boundary_tet_end, ic_boundary_vtx, boundary_vtx_counter)
 
 
 @njit
@@ -530,66 +528,67 @@ def _make_Delaunay_ball(
         if i < bad_tets_end:
             t_index = bad_tets[i]
         else:
-            if 4*num_tet >= len(neighbour_ID):
-                temp1 = np.empty(shape=2*len(neighbour_ID), dtype=np.int64)
+            if num_tet >= len(neighbour_ID):
+                temp1 = np.empty(shape=(2*len(neighbour_ID), 4), dtype=np.int64)
                 for l in range(num_tet):
-                    temp1[4*l+0] = neighbour_ID[4*l+0]
-                    temp1[4*l+1] = neighbour_ID[4*l+1]
-                    temp1[4*l+2] = neighbour_ID[4*l+2]
-                    temp1[4*l+3] = neighbour_ID[4*l+3]
+                    temp1[l, 0] = neighbour_ID[l, 0]
+                    temp1[l, 1] = neighbour_ID[l, 1]
+                    temp1[l, 2] = neighbour_ID[l, 2]
+                    temp1[l, 3] = neighbour_ID[l, 3]
                 neighbour_ID = temp1
 
-                temp2 = np.empty(shape=2*len(vertices_ID), dtype=np.int64)
+                temp2 = np.empty(shape=(2*len(vertices_ID), 4), dtype=np.int64)
                 for l in range(num_tet):
-                    temp2[4*l+0] = vertices_ID[4*l+0]
-                    temp2[4*l+1] = vertices_ID[4*l+1]
-                    temp2[4*l+2] = vertices_ID[4*l+2]
-                    temp2[4*l+3] = vertices_ID[4*l+3]
+                    temp2[l, 0] = vertices_ID[l, 0]
+                    temp2[l, 1] = vertices_ID[l, 1]
+                    temp2[l, 2] = vertices_ID[l, 2]
+                    temp2[l, 3] = vertices_ID[l, 3]
                 vertices_ID = temp2
 
-                temp3 = np.empty(shape=2*len(sub_determinants),
+                temp3 = np.empty(shape=(2*len(sub_determinants), 4),
                                  dtype=np.float64)
                 for l in range(num_tet):
-                    temp3[4*l+0] = sub_determinants[4*l+0]
-                    temp3[4*l+1] = sub_determinants[4*l+1]
-                    temp3[4*l+2] = sub_determinants[4*l+2]
-                    temp3[4*l+3] = sub_determinants[4*l+3]
+                    temp3[l, 0] = sub_determinants[l, 0]
+                    temp3[l, 1] = sub_determinants[l, 1]
+                    temp3[l, 2] = sub_determinants[l, 2]
+                    temp3[l, 3] = sub_determinants[l, 3]
                 sub_determinants = temp3
 
             t_index = num_tet
             num_tet += 1
 
-        vertices_ID[4*t_index+0] = point_id
-        vertices_ID[4*t_index+1] = boundary_vtx[3*i+0]
-        vertices_ID[4*t_index+2] = boundary_vtx[3*i+1]
-        vertices_ID[4*t_index+3] = boundary_vtx[3*i+2]
+        vertices_ID[t_index, 0] = point_id
+        vertices_ID[t_index, 1] = boundary_vtx[i, 0]
+        vertices_ID[t_index, 2] = boundary_vtx[i, 1]
+        vertices_ID[t_index, 3] = boundary_vtx[i, 2]
 
-        neighbour_ID[4*t_index+0] = boundary_tets[i]
-        neighbour_ID[boundary_tets[i]] = 4*t_index+0
+        b_tet = boundary_tets[i]
+        neighbour_ID[t_index, 0] = b_tet
+        neighbour_ID[b_tet//4, b_tet % 4] = 4*t_index+0
 
         is_ghost_tet = False
-        if vertices_ID[4*t_index+1] == gv:
+        if vertices_ID[t_index, 1] == gv:
             is_ghost_tet = True
-        elif vertices_ID[4*t_index+2] == gv:
+        elif vertices_ID[t_index, 2] == gv:
             is_ghost_tet = True
-        elif vertices_ID[4*t_index+3] == gv:
+        elif vertices_ID[t_index, 3] == gv:
             is_ghost_tet = True
 
         if is_ghost_tet is False:
             for j in range(4):
-                csd_points[3*j+0] = points[3*vertices_ID[4*t_index+j]+0]
-                csd_points[3*j+1] = points[3*vertices_ID[4*t_index+j]+1]
-                csd_points[3*j+2] = points[3*vertices_ID[4*t_index+j]+2]
+                csd_points[j, 0] = points[vertices_ID[t_index, j], 0]
+                csd_points[j, 1] = points[vertices_ID[t_index, j], 1]
+                csd_points[j, 2] = points[vertices_ID[t_index, j], 2]
             _calculate_sub_dets(csd_points, csd_final)
-            sub_determinants[4*t_index+0] = csd_final[0]
-            sub_determinants[4*t_index+1] = csd_final[1]
-            sub_determinants[4*t_index+2] = csd_final[2]
-            sub_determinants[4*t_index+3] = csd_final[3]
+            sub_determinants[t_index, 0] = csd_final[0]
+            sub_determinants[t_index, 1] = csd_final[1]
+            sub_determinants[t_index, 2] = csd_final[2]
+            sub_determinants[t_index, 3] = csd_final[3]
         else:
-            sub_determinants[4*t_index+0] = 0
-            sub_determinants[4*t_index+1] = 0
-            sub_determinants[4*t_index+2] = 0
-            sub_determinants[4*t_index+3] = 0
+            sub_determinants[t_index, 0] = 0
+            sub_determinants[t_index, 1] = 0
+            sub_determinants[t_index, 2] = 0
+            sub_determinants[t_index, 3] = 0
 
     # computing internal adjacencies
     for i in range(boundary_tets_end):
@@ -597,9 +596,9 @@ def _make_Delaunay_ball(
             t = bad_tets[i]
         else:
             t = num_tet - (boundary_tets_end-i)
-        i1 = boundary_index[vertices_ID[4*t+1]]
-        i2 = boundary_index[vertices_ID[4*t+2]]
-        i3 = boundary_index[vertices_ID[4*t+3]]
+        i1 = boundary_index[vertices_ID[t, 1]]
+        i2 = boundary_index[vertices_ID[t, 2]]
+        i3 = boundary_index[vertices_ID[t, 3]]
         adjacency_array[boundary_vtx_counter*i1+i2] = 4*t+3
         adjacency_array[boundary_vtx_counter*i2+i3] = 4*t+1
         adjacency_array[boundary_vtx_counter*i3+i1] = 4*t+2
@@ -609,23 +608,23 @@ def _make_Delaunay_ball(
             t = bad_tets[i]
         else:
             t = num_tet - (boundary_tets_end-i)
-        i1 = boundary_index[vertices_ID[4*t+1]]
-        i2 = boundary_index[vertices_ID[4*t+2]]
-        i3 = boundary_index[vertices_ID[4*t+3]]
-        neighbour_ID[4*t+1] = adjacency_array[boundary_vtx_counter*i3+i2]
-        neighbour_ID[4*t+2] = adjacency_array[boundary_vtx_counter*i1+i3]
-        neighbour_ID[4*t+3] = adjacency_array[boundary_vtx_counter*i2+i1]
+        i1 = boundary_index[vertices_ID[t, 1]]
+        i2 = boundary_index[vertices_ID[t, 2]]
+        i3 = boundary_index[vertices_ID[t, 3]]
+        neighbour_ID[t, 1] = adjacency_array[boundary_vtx_counter*i3+i2]
+        neighbour_ID[t, 2] = adjacency_array[boundary_vtx_counter*i1+i3]
+        neighbour_ID[t, 3] = adjacency_array[boundary_vtx_counter*i2+i1]
 
     for i in range(boundary_tets_end):
         if i < bad_tets_end:
             t = bad_tets[i]
         else:
             t = num_tet - (boundary_tets_end-i)
-        boundary_index[vertices_ID[4*t+1]] = -1
-        boundary_index[vertices_ID[4*t+2]] = -1
-        boundary_index[vertices_ID[4*t+3]] = -1
+        boundary_index[vertices_ID[t, 1]] = -1
+        boundary_index[vertices_ID[t, 2]] = -1
+        boundary_index[vertices_ID[t, 3]] = -1
 
-    return neighbour_ID, vertices_ID, sub_determinants, num_tet
+    return (neighbour_ID, vertices_ID, sub_determinants, num_tet)
 
 
 @njit
@@ -646,7 +645,7 @@ def assembly(
     gv,
 ):
     path_cases_counter = 0
-    for point_id in np.arange(4, int(len(points)/3)):
+    for point_id in np.arange(4, len(points)):
 
         enclosing_tet = _walk(
             point_id,             # point_id
@@ -657,8 +656,7 @@ def assembly(
             gv,                   # ghost vertex index
         )
 
-        ic_bad_tet, ic_bad_tet_end, ic_boundary_tet, ic_boundary_tet_end, \
-        ic_boundary_vtx, boundary_vtx_counter = _identify_cavity(
+        cavity_tuple = _identify_cavity(
             points,
             point_id,
             enclosing_tet,
@@ -672,12 +670,18 @@ def assembly(
             gv,
         )
 
+        ic_bad_tet = cavity_tuple[0]
+        ic_bad_tet_end = cavity_tuple[1]
+        ic_boundary_tet = cavity_tuple[2]
+        ic_boundary_tet_end = cavity_tuple[3]
+        ic_boundary_vtx = cavity_tuple[4]
+        boundary_vtx_counter = cavity_tuple[5]
+
         if len(adjacency_array) < boundary_vtx_counter**2:
             adjacency_array = np.zeros(shape=boundary_vtx_counter**2,
                                        dtype=np.int64)
 
-        neighbour_ID, vertices_ID, \
-        sub_determinants, num_tet = _make_Delaunay_ball(
+        mDb_tuple = _make_Delaunay_ball(
             point_id,
             ic_bad_tet,
             ic_bad_tet_end,
@@ -697,6 +701,11 @@ def assembly(
             gv,
         )
 
+        neighbour_ID = mDb_tuple[0]
+        vertices_ID = mDb_tuple[1]
+        sub_determinants = mDb_tuple[2]
+        num_tet = mDb_tuple[3]
+
         if ic_bad_tet_end < ic_boundary_tet_end:
             old_tet = num_tet-1
         else:
@@ -708,35 +717,35 @@ def assembly(
             for k in range(ic_boundary_tet_end, ic_bad_tet_end):
                 tet = ic_bad_tet[k]
                 for t in range(tet, num_tet-1):
-                    vertices_ID[4*t+0] = vertices_ID[4*(t+1)+0]
-                    vertices_ID[4*t+1] = vertices_ID[4*(t+1)+1]
-                    vertices_ID[4*t+2] = vertices_ID[4*(t+1)+2]
-                    vertices_ID[4*t+3] = vertices_ID[4*(t+1)+3]
+                    vertices_ID[t, 0] = vertices_ID[t+1, 0]
+                    vertices_ID[t, 1] = vertices_ID[t+1, 1]
+                    vertices_ID[t, 2] = vertices_ID[t+1, 2]
+                    vertices_ID[t, 3] = vertices_ID[t+1, 3]
 
-                    neighbour_ID[4*t+0] = neighbour_ID[4*(t+1)+0]
-                    neighbour_ID[4*t+1] = neighbour_ID[4*(t+1)+1]
-                    neighbour_ID[4*t+2] = neighbour_ID[4*(t+1)+2]
-                    neighbour_ID[4*t+3] = neighbour_ID[4*(t+1)+3]
+                    neighbour_ID[t, 0] = neighbour_ID[t+1, 0]
+                    neighbour_ID[t, 1] = neighbour_ID[t+1, 1]
+                    neighbour_ID[t, 2] = neighbour_ID[t+1, 2]
+                    neighbour_ID[t, 3] = neighbour_ID[t+1, 3]
 
-                    sub_determinants[4*t+0] = sub_determinants[4*(t+1)+0]
-                    sub_determinants[4*t+1] = sub_determinants[4*(t+1)+1]
-                    sub_determinants[4*t+2] = sub_determinants[4*(t+1)+2]
-                    sub_determinants[4*t+3] = sub_determinants[4*(t+1)+3]
+                    sub_determinants[t, 0] = sub_determinants[t+1, 0]
+                    sub_determinants[t, 1] = sub_determinants[t+1, 1]
+                    sub_determinants[t, 2] = sub_determinants[t+1, 2]
+                    sub_determinants[t, 3] = sub_determinants[t+1, 3]
 
                 num_tet -= 1
 
                 for i in range(num_tet):
                     for j in range(4):
-                        temp = neighbour_ID[4*i+j]
+                        temp = neighbour_ID[i, j]
                         if temp//4 > tet:
-                            neighbour_ID[4*i+j] = 4*(temp//4-1) + temp % 4
+                            neighbour_ID[i, j] = 4*(temp//4-1) + temp % 4
 
                 for i in range(k+1, ic_bad_tet_end):
                     if ic_bad_tet[i] > tet:
                         ic_bad_tet[i] -= 1
 
-    return vertices_ID, neighbour_ID, sub_determinants, \
-           num_tet, path_cases_counter
+    return (vertices_ID, neighbour_ID, sub_determinants,
+            num_tet, path_cases_counter)
 
 
 @njit
@@ -858,9 +867,9 @@ def intialize(
 
     idx = 3
     while True:
-        d[0] = points[3*idx+0]
-        d[1] = points[3*idx+1]
-        d[2] = points[3*idx+2]
+        d[0] = points[idx, 0]
+        d[1] = points[idx, 1]
+        d[2] = points[idx, 2]
         vol_t = a[0]*(
             b[1]*(c[2]-d[2]) -
             b[2]*(c[1]-d[1]) +
@@ -883,100 +892,100 @@ def intialize(
         )
         if vol_t > 0:
             for i in range(3):
-                points[3*3+i], points[3*idx+i] = points[3*idx+i], points[3*3+i]
+                points[3, i], points[idx, i] = points[idx, i], points[3, i]
             break
         elif vol_t < 0:
             for i in range(3):
-                points[3*3+i], points[3*idx+i] = points[3*idx+i], points[3*3+i]
-                points[3*0+i], points[3*1+i] = points[3*1+i], points[3*0+i]
+                points[3, i], points[idx, i] = points[idx, i], points[3, i]
+                points[0, i], points[1, i] = points[1, i], points[0, i]
             break
         else:
             idx += 1
 
-    vertices_ID[0] = 0
-    vertices_ID[1] = 1
-    vertices_ID[2] = 2
-    vertices_ID[3] = 3
+    vertices_ID[0, 0] = 0
+    vertices_ID[0, 1] = 1
+    vertices_ID[0, 2] = 2
+    vertices_ID[0, 3] = 3
 
-    idx_0 = vertices_ID[0]
-    idx_1 = vertices_ID[1]
-    idx_2 = vertices_ID[2]
-    idx_3 = vertices_ID[3]
+    idx_0 = vertices_ID[0, 0]
+    idx_1 = vertices_ID[0, 1]
+    idx_2 = vertices_ID[0, 2]
+    idx_3 = vertices_ID[0, 3]
 
-    vertices_ID[4] = gv
-    vertices_ID[5] = idx_0
-    vertices_ID[6] = idx_1
-    vertices_ID[7] = idx_2
+    vertices_ID[1, 0] = gv
+    vertices_ID[1, 1] = idx_0
+    vertices_ID[1, 2] = idx_1
+    vertices_ID[1, 3] = idx_2
 
-    vertices_ID[8] = gv
-    vertices_ID[9] = idx_0
-    vertices_ID[10] = idx_3
-    vertices_ID[11] = idx_1
+    vertices_ID[2, 0] = gv
+    vertices_ID[2, 1] = idx_0
+    vertices_ID[2, 2] = idx_3
+    vertices_ID[2, 3] = idx_1
 
-    vertices_ID[12] = gv
-    vertices_ID[13] = idx_3
-    vertices_ID[14] = idx_2
-    vertices_ID[15] = idx_1
+    vertices_ID[3, 0] = gv
+    vertices_ID[3, 1] = idx_3
+    vertices_ID[3, 2] = idx_2
+    vertices_ID[3, 3] = idx_1
 
-    vertices_ID[16] = gv
-    vertices_ID[17] = idx_0
-    vertices_ID[18] = idx_2
-    vertices_ID[19] = idx_3
+    vertices_ID[4, 0] = gv
+    vertices_ID[4, 1] = idx_0
+    vertices_ID[4, 2] = idx_2
+    vertices_ID[4, 3] = idx_3
 
-    neighbour_ID[0] = 4*3+0
-    neighbour_ID[1] = 4*4+0
-    neighbour_ID[2] = 4*2+0
-    neighbour_ID[3] = 4*1+0
+    neighbour_ID[0, 0] = 4*3+0
+    neighbour_ID[0, 1] = 4*4+0
+    neighbour_ID[0, 2] = 4*2+0
+    neighbour_ID[0, 3] = 4*1+0
 
-    neighbour_ID[4] = 4*0+3
-    neighbour_ID[5] = 4*3+1
-    neighbour_ID[6] = 4*4+3
-    neighbour_ID[7] = 4*2+2
+    neighbour_ID[1, 0] = 4*0+3
+    neighbour_ID[1, 1] = 4*3+1
+    neighbour_ID[1, 2] = 4*4+3
+    neighbour_ID[1, 3] = 4*2+2
 
-    neighbour_ID[8] = 4*0+2
-    neighbour_ID[9] = 4*3+2
-    neighbour_ID[10] = 4*1+3
-    neighbour_ID[11] = 4*4+2
+    neighbour_ID[2, 0] = 4*0+2
+    neighbour_ID[2, 1] = 4*3+2
+    neighbour_ID[2, 2] = 4*1+3
+    neighbour_ID[2, 3] = 4*4+2
 
-    neighbour_ID[12] = 4*0+0
-    neighbour_ID[13] = 4*1+1
-    neighbour_ID[14] = 4*2+1
-    neighbour_ID[15] = 4*4+1
+    neighbour_ID[3, 0] = 4*0+0
+    neighbour_ID[3, 1] = 4*1+1
+    neighbour_ID[3, 2] = 4*2+1
+    neighbour_ID[3, 3] = 4*4+1
 
-    neighbour_ID[16] = 4*0+1
-    neighbour_ID[17] = 4*3+3
-    neighbour_ID[18] = 4*2+3
-    neighbour_ID[19] = 4*1+2
+    neighbour_ID[4, 0] = 4*0+1
+    neighbour_ID[4, 1] = 4*3+3
+    neighbour_ID[4, 2] = 4*2+3
+    neighbour_ID[4, 3] = 4*1+2
 
     for i in range(4):
         for j in range(3):
-            csd_points[3*i+j] = points[3*vertices_ID[i]+j]
+            csd_points[i, j] = points[vertices_ID[0, i], j]
     _calculate_sub_dets(csd_points, csd_final)
 
-    sub_determinants[0] = csd_final[0]
-    sub_determinants[1] = csd_final[1]
-    sub_determinants[2] = csd_final[2]
-    sub_determinants[3] = csd_final[3]
+    sub_determinants[0, 0] = csd_final[0]
+    sub_determinants[0, 1] = csd_final[1]
+    sub_determinants[0, 2] = csd_final[2]
+    sub_determinants[0, 3] = csd_final[3]
 
-    sub_determinants[4] = 0
-    sub_determinants[5] = 0
-    sub_determinants[6] = 0
-    sub_determinants[7] = 0
+    sub_determinants[1, 0] = 0
+    sub_determinants[1, 1] = 0
+    sub_determinants[1, 2] = 0
+    sub_determinants[1, 3] = 0
 
-    sub_determinants[8] = 0
-    sub_determinants[9] = 0
-    sub_determinants[10] = 0
-    sub_determinants[11] = 0
+    sub_determinants[2, 0] = 0
+    sub_determinants[2, 1] = 0
+    sub_determinants[2, 2] = 0
+    sub_determinants[2, 3] = 0
 
-    sub_determinants[12] = 0
-    sub_determinants[13] = 0
-    sub_determinants[14] = 0
-    sub_determinants[15] = 0
+    sub_determinants[3, 0] = 0
+    sub_determinants[3, 1] = 0
+    sub_determinants[3, 2] = 0
+    sub_determinants[3, 3] = 0
 
-    sub_determinants[16] = 0
-    sub_determinants[17] = 0
-    sub_determinants[18] = 0
-    sub_determinants[19] = 0
+    sub_determinants[4, 0] = 0
+    sub_determinants[4, 1] = 0
+    sub_determinants[4, 2] = 0
+    sub_determinants[4, 3] = 0
 
     return
 
@@ -988,20 +997,20 @@ class Delaunay3D:
 
         self.points = BRIO.make_BRIO(points)
         # self.points = points
-        N = int(len(self.points)/3)
+        N = len(self.points)
         self.gv = N  # index of the ghost vertex
         self.boundary_index = -1*np.ones(shape=N+1, dtype=np.int64)
 
-        a = self.points[0:3]
-        b = self.points[3:6]
-        c = self.points[6:9]
+        a = self.points[0]
+        b = self.points[1]
+        c = self.points[2]
         d = np.empty(shape=3)
 
-        self.vertices_ID = np.empty(4*(7*N), dtype=np.int64)
-        self.neighbour_ID = np.empty(4*(7*N), dtype=np.int64)
-        self.sub_determinants = np.empty(4*(7*N), dtype=np.float64)
+        self.vertices_ID = np.empty(shape=(7*N, 4), dtype=np.int64)
+        self.neighbour_ID = np.empty(shape=(7*N, 4), dtype=np.int64)
+        self.sub_determinants = np.empty(shape=(7*N, 4), dtype=np.float64)
 
-        csd_points = np.empty(shape=12, dtype=np.float64)
+        csd_points = np.empty(shape=(4, 3), dtype=np.float64)
         csd_final = np.empty(4, dtype=np.float64)
 
         intialize(a, b, c, d, self.points, self.vertices_ID,
@@ -1022,18 +1031,17 @@ class Delaunay3D:
         # so that they don't have to get their hands dirty with
         # object creation.
         csd_final = np.empty(4, dtype=np.float64)
-        csd_points = np.empty(12, dtype=np.float64)
+        csd_points = np.empty(shape=(4, 3), dtype=np.float64)
         ic_bad_tet = np.empty(100, dtype=np.int64)
         ic_boundary_tet = np.empty(100, dtype=np.int64)
-        ic_boundary_vtx = np.empty(3*100, dtype=np.int64)
+        ic_boundary_vtx = np.empty(shape=(100, 3), dtype=np.int64)
         adjacency_array = np.zeros(shape=40*40, dtype=np.int64)
 
         if printTime is True:
             import time
             start = time.time()
 
-        self.vertices_ID, self.neighbour_ID, self.sub_determinants, \
-        self.num_tet, path_cases_counter = assembly(
+        res = assembly(
             old_tet,
             csd_final,
             csd_points,
@@ -1049,6 +1057,12 @@ class Delaunay3D:
             adjacency_array,
             self.gv,
         )
+
+        self.vertices_ID = res[0]
+        self.neighbour_ID = res[1]
+        self.sub_determinants = res[2]
+        self.num_tet = res[3]
+        path_cases_counter = res[4]
 
         if printTime is True:
             end = time.time()
@@ -1149,7 +1163,7 @@ def perf(N):
     np.random.seed(seed=10)
 
     # print("priming numba")
-    temp_pts = np.random.rand(30)
+    temp_pts = np.random.rand(3*10).reshape((10, 3))
     tempDT = Delaunay3D(temp_pts)
     # print("DT initialized")
     tempDT.makeDT()
@@ -1162,7 +1176,7 @@ def perf(N):
     times = np.empty(shape=num_runs, dtype=np.float64)
     for i in range(num_runs):
         np.random.seed(seed=i**2)
-        points = np.random.rand(3*N)
+        points = np.random.rand(3*N).reshape((N, 3))
         start = time.time()
         DT = Delaunay3D(points)
         DT.makeDT()

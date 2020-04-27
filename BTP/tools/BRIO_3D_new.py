@@ -186,18 +186,18 @@ def sort_along_hilbert_curve(
     new_indices : N x 1 array
     '''
 
-    min_x = org_points[0]
-    min_y = org_points[1]
-    min_z = org_points[2]
+    min_x = org_points[0, 0]
+    min_y = org_points[0, 1]
+    min_z = org_points[0, 2]
 
-    max_x = org_points[0]
-    max_y = org_points[1]
-    max_z = org_points[2]
+    max_x = org_points[0, 0]
+    max_y = org_points[0, 1]
+    max_z = org_points[0, 2]
 
     for i in range(org_points_end):
-        x = org_points[3*i+0]
-        y = org_points[3*i+1]
-        z = org_points[3*i+2]
+        x = org_points[i, 0]
+        y = org_points[i, 1]
+        z = org_points[i, 2]
 
         if x < min_x:
             min_x = x
@@ -227,9 +227,9 @@ def sort_along_hilbert_curve(
 
     for i in range(org_points_end):
 
-        x = org_points[3*i+0]
-        y = org_points[3*i+1]
-        z = org_points[3*i+2]
+        x = org_points[i, 0]
+        y = org_points[i, 1]
+        z = org_points[i, 2]
 
         x = np.round((a-1)*((x-min_x)/max_xyz), 0)
         y = np.round((a-1)*((y-min_y)/max_xyz), 0)
@@ -241,9 +241,9 @@ def sort_along_hilbert_curve(
 
     for i in range(org_points_end):
         idx = new_indices[i]
-        temp_points[3*i+0] = org_points[3*idx+0]
-        temp_points[3*i+1] = org_points[3*idx+1]
-        temp_points[3*i+2] = org_points[3*idx+2]
+        temp_points[i, 0] = org_points[idx, 0]
+        temp_points[i, 1] = org_points[idx, 1]
+        temp_points[i, 2] = org_points[idx, 2]
 
     return
 
@@ -267,18 +267,18 @@ def final_assembly(
     for i in range(len(boundary_indices)-1):
         org_points_end = 0
         for j in range(boundary_indices[i], boundary_indices[i+1]):
-            org_points[3*org_points_end+0] = points[3*rounds[j]+0]
-            org_points[3*org_points_end+1] = points[3*rounds[j]+1]
-            org_points[3*org_points_end+2] = points[3*rounds[j]+2]
+            org_points[org_points_end, 0] = points[rounds[j], 0]
+            org_points[org_points_end, 1] = points[rounds[j], 1]
+            org_points[org_points_end, 2] = points[rounds[j], 2]
             org_points_end += 1
 
         sort_along_hilbert_curve(org_points, temp_points, hilbert_arr,
                                  new_indices, org_points_end, p)
 
         for j in range(boundary_indices[i+1]-1, boundary_indices[i]-1, -1):
-            new_points[3*j+0] = temp_points[3*(org_points_end-1)+0]
-            new_points[3*j+1] = temp_points[3*(org_points_end-1)+1]
-            new_points[3*j+2] = temp_points[3*(org_points_end-1)+2]
+            new_points[j, 0] = temp_points[org_points_end-1, 0]
+            new_points[j, 1] = temp_points[org_points_end-1, 1]
+            new_points[j, 2] = temp_points[org_points_end-1, 2]
             org_points_end -= 1
 
     return
@@ -286,13 +286,13 @@ def final_assembly(
 
 def make_BRIO(points):
 
-    len_points = int(len(points)/3)
-    num_rounds = int(np.round(np.log2(len_points), 0))
+    num_points = len(points)
+    num_rounds = int(np.round(np.log2(num_points), 0))
 
-    rounds = np.empty(len_points, dtype=np.int64)
-    points_left_old = np.arange(len_points, dtype=np.int64)
+    rounds = np.empty(num_points, dtype=np.int64)
+    points_left_old = np.arange(num_points, dtype=np.int64)
     np.random.shuffle(points_left_old)
-    points_left_new = np.empty(len_points, dtype=np.int64)
+    points_left_new = np.empty(num_points, dtype=np.int64)
     boundary_indices = np.empty(num_rounds+1, dtype=np.int64)
 
     make_rounds(rounds, boundary_indices, points_left_old, points_left_new)
@@ -306,18 +306,18 @@ def make_BRIO(points):
     # else:
     #     p = int(np.ceil((1/3)*np.log2(max_number_of_points_in_a_round/rho)))
 
-    rho = 5  # number of points per cell
-    if len_points <= int(rho*(2**(3*3))):
-        p = 3
+    rho = 2  # number of points per cell
+    if num_points <= int(rho*(2**(3*4))):
+        p = 4
     else:
-        p = int(np.ceil((1/3)*np.log2(len_points/rho)))
+        p = int(np.ceil((1/3)*np.log2(num_points/rho)))
 
     a = 2**p
     hilbert_arr = np.empty(shape=(a, a, a), dtype=np.int64)
-    org_points = np.empty(3*max_number_of_points_in_a_round, dtype=np.float64)
-    temp_points = np.empty(3*max_number_of_points_in_a_round, dtype=np.float64)
+    org_points = np.empty(shape=(max_number_of_points_in_a_round, 3), dtype=np.float64)
+    temp_points = np.empty(shape=(max_number_of_points_in_a_round, 3), dtype=np.float64)
     new_indices = np.empty(max_number_of_points_in_a_round, dtype=np.int64)
-    new_points = np.empty(3*len_points, dtype=np.float64)
+    new_points = np.empty(shape=(num_points, 3), dtype=np.float64)
 
     final_assembly(points, new_points, rounds, boundary_indices,
                    points_left_old, points_left_new, hilbert_arr,
@@ -335,17 +335,18 @@ def perf(N):
     temp = np.random.rand(3*10)
     temp_BRIO = make_BRIO(temp)
 
-    for i in range(5):
+    num_runs = 5
+    times = np.empty(num_runs, dtype=np.float64)
+    for i in range(num_runs):
         start = time.time()
         points_new = make_BRIO(points)
         end = time.time()
-        if i == 0:
-            running_time = end-start
-        else:
-            running_time = min(running_time, end-start)
+        times[i] = end - start
+        print("Run {} : {} s".format(i+1, times[i]))
+
 
     print("BRIO made for {} points.".format(N))
-    print("time taken : {} s".format(running_time))
+    print("minimum time taken : {} s".format(np.min(times)))
 
 
 if __name__ == "__main__":

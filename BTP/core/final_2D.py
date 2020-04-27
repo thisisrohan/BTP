@@ -301,8 +301,8 @@ def _identify_cavity(
         if ic_idx == ic_bad_tri_end:
             break
 
-    return (ic_bad_tri, ic_bad_tri_end, ic_boundary_tri,
-            ic_boundary_tri_end, ic_boundary_vtx)
+    return ic_bad_tri, ic_bad_tri_end, ic_boundary_tri, \
+           ic_boundary_tri_end, ic_boundary_vtx
 
 
 @njit
@@ -418,7 +418,8 @@ def assembly(
             gv,
         )
 
-        cavity_results = _identify_cavity(
+        ic_bad_tri, ic_bad_tri_end ic_boundary_tri, \
+        ic_boundary_tri_end, ic_boundary_vtx = _identify_cavity(
             points,
             point_id,
             enclosing_tri,
@@ -430,12 +431,6 @@ def assembly(
             gv,
             bad_tri_indicator_arr,
         )
-
-        ic_bad_tri = cavity_results[0]
-        ic_bad_tri_end = cavity_results[1]
-        ic_boundary_tri = cavity_results[2]
-        ic_boundary_tri_end = cavity_results[3]
-        ic_boundary_vtx = cavity_results[4]
 
         num_tri, old_tri = _make_Delaunay_ball(
             point_id,
