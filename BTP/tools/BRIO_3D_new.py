@@ -306,7 +306,7 @@ def make_BRIO(points):
     # else:
     #     p = int(np.ceil((1/3)*np.log2(max_number_of_points_in_a_round/rho)))
 
-    rho = 2  # number of points per cell
+    rho = 3  # number of points per cell
     if num_points <= int(rho*(2**(3*4))):
         p = 4
     else:

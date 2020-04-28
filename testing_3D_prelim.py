@@ -53,9 +53,9 @@ points_2 = points_1.reshape(3*len(points_1))
 
 DT3 = t3.Delaunay3D(points_2)
 DT3.makeDT(printTime=False)
-points_1, vertices_1, sd_1 = DT3.exportDT()
-DT_test.TestDelaunay3D_det(points_1, vertices_1)
-DT_test.TestDelaunay3D_sd(points_1, vertices_1)
+# points_1, vertices_1, sd_1 = DT3.exportDT()
+# DT_test.TestDelaunay3D_det(points_1, vertices_1)
+# DT_test.TestDelaunay3D_sd(points_1, vertices_1)
 # DT3.export_VTK()
 
 # DT3 = t3_org.Delaunay3D(points_2)
@@ -73,7 +73,7 @@ DT_test.TestDelaunay3D_sd(points_1, vertices_1)
 ############################## the main experiment ##############################
 
 
-N = 5*(10**2)
+N = 1*(10**5)
 num = 10
 # flags = np.empty(shape=num, dtype=np.bool_)
 pathCases = np.empty(shape=num, dtype=np.int64)
@@ -102,8 +102,8 @@ for i in np.arange(num):
     print("Time taken by scipy.spatial.Delaunay (QHull) : {} s.".format(end-start))
     print("Number of tets : {} \n".format(len(tets.simplices)))
 
-    DT_test.TestDelaunay3D_det(points_0, vertices_0)
-    DT_test.TestDelaunay3D_sd(points_0, vertices_0)
+    # DT_test.TestDelaunay3D_det(points_0, vertices_0)
+    # DT_test.TestDelaunay3D_sd(points_0, vertices_0)
 
     # temp = DT_test.TestNeighbours_qhull(neighbour_ID_0)
     # DT_test.check_tri_intersections(points_0, vertices_0)
@@ -121,9 +121,10 @@ for i in np.arange(num):
     print("Time taken by test7_3D_sd : {} s.".format(end-start))
     print("Number of tets (including ghost tets) : " + str(DT3.num_tet))
     print("Number of real tets : {} \n".format(int(len(vertices_1)*0.25)))
+    # print("Number of real tets : {} \n".format(int(len(vertices_1))))
 
-    DT_test.TestDelaunay3D_det(points_1, vertices_1)
-    DT_test.TestDelaunay3D_sd(points_1, vertices_1)
+    # DT_test.TestDelaunay3D_det(points_1, vertices_1)
+    # DT_test.TestDelaunay3D_sd(points_1, vertices_1)
 
     # neighbour_ID_1 = DT3.neighbour_ID[0:4*DT3.num_tet]
     # DT_test.TestNeighbours_qhull(neighbour_ID_1.reshape((int(0.25*len(neighbour_ID_1)), 4)))

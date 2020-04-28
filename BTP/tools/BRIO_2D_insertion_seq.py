@@ -182,7 +182,7 @@ def sort_along_hilbert_curve(
         y = org_points[2*i+1]
 
         x = np.round(((x-min_x)/max_xy)*(a-1), 0)
-        x = np.round(((y-min_y)/max_xy)*(a-1), 0)
+        y = np.round(((y-min_y)/max_xy)*(a-1), 0)
 
         new_indices[i] = hilbert_arr[int(x+a*y)]
 

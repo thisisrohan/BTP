@@ -1080,16 +1080,13 @@ class Delaunay3D:
         indices = np.zeros(shape=len(self.vertices_ID), dtype=np.bool_)
         # counter = 0
         for i in np.arange(0, self.num_tet):
-            idx = np.where(self.vertices_ID[4*i:4*i+4] == self.gv)[0]
+            idx = np.where(self.vertices_ID[i, :] == self.gv)[0]
             if len(idx) == 0:
                 # i.e. i is not a ghost triangle
-                indices[4*i+0] = 1
-                indices[4*i+1] = 1
-                indices[4*i+2] = 1
-                indices[4*i+3] = 1
+                indices[i] = 1
                 # counter += 1
-        vertices = self.vertices_ID[indices]
-        sub_determinants = self.sub_determinants[indices]
+        vertices = self.vertices_ID[indices, :]
+        sub_determinants = self.sub_determinants[indices, :]
         # neighbors = self.neighbour_ID[indices]//4
 
         # ghost_tets = np.where(indices[0:4*self.num_tet:4] == False)[0]

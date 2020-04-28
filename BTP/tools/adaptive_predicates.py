@@ -1,4 +1,7 @@
 import numpy as np
+
+def njit(f):
+    return f
 from numba import njit
 
 
@@ -25,7 +28,7 @@ def Fast_Two_Diff_Tail(a, b, x):
 
 @njit
 def Fast_Two_Diff(a, b):
-    x =a - b
+    x = a - b
     y = Fast_Two_Diff_Tail(a, b, x)
     return x, y
 
@@ -58,7 +61,7 @@ def Two_Diff_Tail(a, b, x):
 
 
 @njit
-def Two_Diff(a, b, x, y) \
+def Two_Diff(a, b):
     x = a - b
     y = Two_Diff_Tail(a, b, x)
     return x, y
@@ -306,7 +309,7 @@ def Two_Square(a1, a0, splitter):
 #*****************************************************************************#
 
 @njit
-def exactinit():
+def exactinit2d():
 
     every_other = True
     half = np.float64(0.5)
@@ -318,7 +321,7 @@ def exactinit():
         epsilon *= half
         if every_other:
           splitter *= two
-        every_other = !every_other
+        every_other = not every_other
         if one + epsilon != one:
             pass
         else:
@@ -330,20 +333,45 @@ def exactinit():
     ccwerrboundA = (3.0 + 16.0 * epsilon) * epsilon
     ccwerrboundB = (2.0 + 12.0 * epsilon) * epsilon
     ccwerrboundC = (9.0 + 64.0 * epsilon) * epsilon * epsilon
-    o3derrboundA = (7.0 + 56.0 * epsilon) * epsilon
-    o3derrboundB = (3.0 + 28.0 * epsilon) * epsilon
-    o3derrboundC = (26.0 + 288.0 * epsilon) * epsilon * epsilon
     iccerrboundA = (10.0 + 96.0 * epsilon) * epsilon
     iccerrboundB = (4.0 + 48.0 * epsilon) * epsilon
     iccerrboundC = (44.0 + 576.0 * epsilon) * epsilon * epsilon
+
+    return resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
+           iccerrboundA, iccerrboundB, iccerrboundC, splitter
+
+
+@njit
+def exactinit3d():
+
+    every_other = True
+    half = np.float64(0.5)
+    epsilon = np.float64(1.0)
+    splitter = np.float64(1.0)
+    one = np.float64(1.0)
+    two = np.float64(2.0)
+    while True:
+        epsilon *= half
+        if every_other:
+          splitter *= two
+        every_other = not every_other
+        if one + epsilon != one:
+            pass
+        else:
+            break
+    splitter += one
+
+    # Error bounds for orientation and incircle tests.
+    resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
+    o3derrboundA = (7.0 + 56.0 * epsilon) * epsilon
+    o3derrboundB = (3.0 + 28.0 * epsilon) * epsilon
+    o3derrboundC = (26.0 + 288.0 * epsilon) * epsilon * epsilon
     isperrboundA = (16.0 + 224.0 * epsilon) * epsilon
     isperrboundB = (5.0 + 72.0 * epsilon) * epsilon
     isperrboundC = (71.0 + 1408.0 * epsilon) * epsilon * epsilon
 
-    return resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
-           o3derrboundA, o3derrboundB, o3derrboundC, \
-           iccerrboundA, iccerrboundB, iccerrboundC, \
-           isperrboundA, isperrboundB, isperrboundC
+    return resulterrbound, o3derrboundA, o3derrboundB, o3derrboundC, \
+           isperrboundA, isperrboundB, isperrboundC, splitter
 
 
 #*****************************************************************************#
@@ -913,7 +941,7 @@ def compress(elen, e, h):
             h[bottom] = Qnew
             bottom -= 1
             Q = q
-        else 
+        else :
             Q = Qnew
 
     top = 0
@@ -967,8 +995,8 @@ def estimate(elen, e):
 #*****************************************************************************#
 
 @njit
-def orient2dadapt(pa, pb, pc, detsum, splitter, B, C1, C2, D, u
-                  ccwerrboundB, ccwerrboundC, resulterrbound):
+def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
+                  C2, D, u, ccwerrboundB, ccwerrboundC, resulterrbound):
     '''
     len(B) = 4
     len(C1) = 8
@@ -977,10 +1005,10 @@ def orient2dadapt(pa, pb, pc, detsum, splitter, B, C1, C2, D, u
     len(u) = 4
     '''
 
-    bcx = pb[0] - pc[0]
-    acx = pa[0] - pc[0]
-    acy = pa[1] - pc[1]
-    bcy = pb[1] - pc[1]
+    bcx = pb_x - pc_x
+    acx = pa_x - pc_x
+    acy = pa_y - pc_y
+    bcy = pb_y - pc_y
 
     detleft, detlefttail = Two_Product(acx, bcy, splitter)
     detright, detrighttail = Two_Product(acy, bcx, splitter)
@@ -993,10 +1021,10 @@ def orient2dadapt(pa, pb, pc, detsum, splitter, B, C1, C2, D, u
     if (det >= errbound) or (-det >= errbound):
         return det
 
-    acxtail = Two_Diff_Tail(pa[0], pc[0], acx)
-    bcxtail = Two_Diff_Tail(pb[0], pc[0], bcx)
-    acytail = Two_Diff_Tail(pa[1], pc[1], acy)
-    bcytail = Two_Diff_Tail(pb[1], pc[1], bcy)
+    acxtail = Two_Diff_Tail(pa_x, pc_x, acx)
+    bcxtail = Two_Diff_Tail(pb_x, pc_x, bcx)
+    acytail = Two_Diff_Tail(pa_y, pc_y, acy)
+    bcytail = Two_Diff_Tail(pb_y, pc_y, bcy)
 
     if (acxtail == 0.0) and (acytail == 0.0) and \
             (bcxtail == 0.0) and (bcytail == 0.0):
@@ -1027,8 +1055,8 @@ def orient2dadapt(pa, pb, pc, detsum, splitter, B, C1, C2, D, u
 
 
 @njit
-def orient2d(pa, pb, pc, splitter, B, C1, C2, D, u, ccwerrboundA,
-             ccwerrboundB, ccwerrboundC, resulterrbound, splitter):
+def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
+             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1037,8 +1065,8 @@ def orient2d(pa, pb, pc, splitter, B, C1, C2, D, u, ccwerrboundA,
     len(u) = 4
     '''
 
-    detleft = (pa[0] - pc[0]) * (pb[1] - pc[1])
-    detright = (pa[1] - pc[1]) * (pb[0] - pc[0])
+    detleft = (pa_x - pc_x) * (pb_y - pc_y)
+    detright = (pa_y - pc_y) * (pb_x - pc_x)
     det = detleft - detright
 
     if detleft > 0.0:
@@ -1058,8 +1086,9 @@ def orient2d(pa, pb, pc, splitter, B, C1, C2, D, u, ccwerrboundA,
     if (det >= errbound) or (-det >= errbound):
         return det
 
-    return orient2dadapt(pa, pb, pc, detsum, splitter, B, C1, C2, D, u
-                         ccwerrboundB, ccwerrboundC, resulterrbound)
+    return orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter,
+                         B, C1, C2, D, u, ccwerrboundB, ccwerrboundC,
+                         resulterrbound)
 
 
 #*****************************************************************************#
@@ -1585,16 +1614,17 @@ def orient3d(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
 #*****************************************************************************#
 
 @njit
-def incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc,
-                  ayybc, adet, bxca, bxxca, byca, byyca, bdet, cxab, cxxab,
-                  cyab, cyyab, cdet, abdet, fin1, fin2, temp8, temp16a,
-                  temp16b, temp16c, temp32a, temp32b, temp48, temp64, axtbb,
-                  axtcc, aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa,
-                  cxtbb, cytaa, cytbb, axtbc, aytbc, bxtca, bytca, cxtab,
-                  cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt,
-                  axtbctt, aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt,
-                  bct, cat, abtt, bctt, catt, splitter, iccerrboundB,
-                  iccerrboundC, resulterrbound):
+def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
+                  bc, ca, ab, axbc, axxbc, aybc, ayybc, adet, bxca, bxxca,
+                  byca, byyca, bdet, cxab, cxxab, cyab, cyyab, cdet, abdet,
+                  fin1, fin2, aa, bb, cc, u, v, temp8, temp16a, temp16b,
+                  temp16c, temp32a, temp32b, temp48, temp64, axtbb, axtcc,
+                  aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb,
+                  cytaa, cytbb, axtbc, aytbc, bxtca, bytca, cxtab, cytab,
+                  axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
+                  aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat,
+                  abtt, bctt, catt, splitter, iccerrboundB, iccerrboundC,
+                  resulterrbound):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -1617,6 +1647,11 @@ def incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc,
     len(abdet) = 64
     len(fin1) = 1152
     len(fin2) = 1152
+    len(aa) = 4
+    len(bb) = 4
+    len(cc) = 4
+    len(u) = 4
+    len(v) = 4
     len(temp8) = 8
     len(temp16a) = 16
     len(temp16b) = 16
@@ -1663,12 +1698,12 @@ def incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc,
     len(catt) = 4
     '''
 
-    adx = pa[0] - pd[0]
-    bdx = pb[0] - pd[0]
-    cdx = pc[0] - pd[0]
-    ady = pa[1] - pd[1]
-    bdy = pb[1] - pd[1]
-    cdy = pc[1] - pd[1]
+    adx = pa_x - pd_x
+    bdx = pb_x - pd_x
+    cdx = pc_x - pd_x
+    ady = pa_y - pd_y
+    bdy = pb_y - pd_y
+    cdy = pc_y - pd_y
 
     bdxcdy1, bdxcdy0 = Two_Product(bdx, cdy, splitter)
     cdxbdy1, cdxbdy0 = Two_Product(cdx, bdy, splitter)
@@ -1708,12 +1743,12 @@ def incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc,
     if (det >= errbound) or (-det >= errbound):
         return det
 
-    adxtail = Two_Diff_Tail(pa[0], pd[0], adx)
-    adytail = Two_Diff_Tail(pa[1], pd[1], ady)
-    bdxtail = Two_Diff_Tail(pb[0], pd[0], bdx)
-    bdytail = Two_Diff_Tail(pb[1], pd[1], bdy)
-    cdxtail = Two_Diff_Tail(pc[0], pd[0], cdx)
-    cdytail = Two_Diff_Tail(pc[1], pd[1], cdy)
+    adxtail = Two_Diff_Tail(pa_x, pd_x, adx)
+    adytail = Two_Diff_Tail(pa_y, pd_y, ady)
+    bdxtail = Two_Diff_Tail(pb_x, pd_x, bdx)
+    bdytail = Two_Diff_Tail(pb_y, pd_y, bdy)
+    cdxtail = Two_Diff_Tail(pc_x, pd_x, cdx)
+    cdytail = Two_Diff_Tail(pc_y, pd_y, cdy)
     if (adxtail == 0.0) and (bdxtail == 0.0) and (cdxtail == 0.0) and \
             (adytail == 0.0) and (bdytail == 0.0) and (cdytail == 0.0):
         return det
@@ -1744,8 +1779,8 @@ def incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc,
 
     if (cdxtail != 0.0) or (cdytail != 0.0) or \
             (adxtail != 0.0) or (adytail != 0.0):
-        Square(bdx, bdxbdx1, bdxbdx0)
-        Square(bdy, bdybdy1, bdybdy0)
+        bdxbdx1, bdxbdx0 = Square(bdx, splitter)
+        bdybdy1, bdybdy0 = Square(bdy, splitter)
         bb[3], bb[2], bb[1], bb[0] = Two_Two_Sum(bdxbdx1, bdxbdx0,
                                                  bdybdy1, bdybdy0)
 
@@ -2029,7 +2064,7 @@ def incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc,
             ti1, ti0 = Two_Product(adxtail, negate, splitter)
             negate = -cdytail
             tj1, tj0 = Two_Product(adx, negate, splitter)
-            v[3], v[2], v[1], v[0] = Two_Two_Sum(ti1, ti0, tj1, tj0, splitter)
+            v[3], v[2], v[1], v[0] = Two_Two_Sum(ti1, ti0, tj1, tj0)
             catlen = fast_expansion_sum_zeroelim(4, u, 4, v, cat)
 
             ti1, ti0 = Two_Product(cdxtail, adytail, splitter)
@@ -2265,19 +2300,20 @@ def incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc,
             finnow = finother
             finother = finswap
 
-  return finnow[finlength - 1]
+    return finnow[finlength - 1]
 
 
 @njit
-def incircle(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc,
-             adet, bxca, bxxca, byca, byyca, bdet, cxab, cxxab, cyab, cyyab,
-             cdet, abdet, fin1, fin2, temp8, temp16a, temp16b, temp16c,
-             temp32a, temp32b, temp48, temp64, axtbb, axtcc, aytbb, aytcc,
-             bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb, axtbc,
-             aytbc, bxtca, bytca, cxtab, cytab, axtbct, aytbct, bxtcat, bytcat,
-             cxtabt, cytabt, axtbctt, aytbctt, bxtcatt, bytcatt, cxtabtt,
-             cytabtt, abt, bct, cat, abtt, bctt, catt, splitter, iccerrboundA,
-             iccerrboundB, iccerrboundC, resulterrbound):
+def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
+             axxbc, aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet, cxab,
+             cxxab, cyab, cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, u, v,
+             temp8, temp16a, temp16b, temp16c, temp32a, temp32b, temp48,
+             temp64, axtbb, axtcc, aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc,
+             cxtaa, cxtbb, cytaa, cytbb, axtbc, aytbc, bxtca, bytca, cxtab,
+             cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
+             aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat, abtt,
+             bctt, catt, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
+             resulterrbound):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2300,6 +2336,11 @@ def incircle(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc,
     len(abdet) = 64
     len(fin1) = 1152
     len(fin2) = 1152
+    len(aa) = 4
+    len(bb) = 4
+    len(cc) = 4
+    len(u) = 4
+    len(v) = 4
     len(temp8) = 8
     len(temp16a) = 16
     len(temp16b) = 16
@@ -2346,12 +2387,12 @@ def incircle(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc,
     len(catt) = 4
     '''
 
-    adx = pa[0] - pd[0]
-    bdx = pb[0] - pd[0]
-    cdx = pc[0] - pd[0]
-    ady = pa[1] - pd[1]
-    bdy = pb[1] - pd[1]
-    cdy = pc[1] - pd[1]
+    adx = pa_x - pd_x
+    bdx = pb_x - pd_x
+    cdx = pc_x - pd_x
+    ady = pa_y - pd_y
+    bdy = pb_y - pd_y
+    cdy = pc_y - pd_y
 
     bdxcdy = bdx * cdy
     cdxbdy = cdx * bdy
@@ -2376,9 +2417,10 @@ def incircle(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc,
     if (det > errbound) or (-det > errbound):
         return det
 
-    return incircleadapt(pa, pb, pc, pd, permanent, bc, ca, ab, axbc, axxbc,
-                         aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet,
-                         cxab, cxxab, cyab, cyyab, cdet, abdet, fin1, fin2,
+    return incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y,
+                         permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet,
+                         bxca, bxxca, byca, byyca, bdet, cxab, cxxab, cyab,
+                         cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, u, v,
                          temp8, temp16a, temp16b, temp16c, temp32a, temp32b,
                          temp48, temp64, axtbb, axtcc, aytbb, aytcc, bxtaa,
                          bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb,
@@ -2925,12 +2967,13 @@ def insphereadapt(pa, pb, pc, pd, pe, permanent, ab, bc, cd, de, ea, ac, bd,
     if (det >= errbound) or (-det >= errbound):
         return det
 
-  return insphereexact(pa, pb, pc, pd, pe, ab, bc, cd, de, ea, ac, bd, ce, da,
-                       eb, temp8a, temp8b, temp16, abc, bcd, cde, dea, eab,
-                       abd, bce, cda, deb, eac, temp48a, temp48b, abcd, bcde,
-                       cdea, deab, eabc, temp192, det384x, det384y, det384z,
-                       detxy, adet1152, bdet1152, cdet1152, ddet1152, edet1152,
-                       abdet2304, cddet2304, cdedet, deter, splitter)
+    return insphereexact(pa, pb, pc, pd, pe, ab, bc, cd, de, ea, ac, bd, ce,
+                         da, eb, temp8a, temp8b, temp16, abc, bcd, cde, dea,
+                         eab, abd, bce, cda, deb, eac, temp48a, temp48b, abcd,
+                         bcde, cdea, deab, eabc, temp192, det384x, det384y,
+                         det384z, detxy, adet1152, bdet1152, cdet1152,
+                         ddet1152, edet1152, abdet2304, cddet2304, cdedet,
+                         deter, splitter)
 
 
 @njit
@@ -3034,3 +3077,109 @@ def insphere(pa, pb, pc, pd, pe, ab, bc, cd, de, ea, ac, bd, ce, da, eb,
                          ddet1152, edet1152, abdet2304, cddet2304, cdedet,
                          deter, splitter, isperrboundB, isperrboundC,
                          resulterrbound)
+
+
+
+def test2d():
+
+    B = np.empty(shape=4, dtype=np.float64)
+    C1 = np.empty(shape=8, dtype=np.float64)
+    C2 = np.empty(shape=12, dtype=np.float64)
+    D = np.empty(shape=16, dtype=np.float64)
+    u = np.empty(shape=4, dtype=np.float64)
+    bc = np.empty(shape=4, dtype=np.float64)
+    ca = np.empty(shape=4, dtype=np.float64)
+    ab = np.empty(shape=4, dtype=np.float64)
+    axbc = np.empty(shape=8, dtype=np.float64)
+    axxbc = np.empty(shape=16, dtype=np.float64)
+    aybc = np.empty(shape=8, dtype=np.float64)
+    ayybc = np.empty(shape=16, dtype=np.float64)
+    adet = np.empty(shape=32, dtype=np.float64)
+    bxca = np.empty(shape=8, dtype=np.float64)
+    bxxca = np.empty(shape=16, dtype=np.float64)
+    byca = np.empty(shape=8, dtype=np.float64)
+    byyca = np.empty(shape=16, dtype=np.float64)
+    bdet = np.empty(shape=32, dtype=np.float64)
+    cxab = np.empty(shape=8, dtype=np.float64)
+    cxxab = np.empty(shape=16, dtype=np.float64)
+    cyab = np.empty(shape=8, dtype=np.float64)
+    cyyab = np.empty(shape=16, dtype=np.float64)
+    cdet = np.empty(shape=32, dtype=np.float64)
+    abdet = np.empty(shape=64, dtype=np.float64)
+    fin1 = np.empty(shape=1152, dtype=np.float64)
+    fin2 = np.empty(shape=1152, dtype=np.float64)
+    temp8 = np.empty(shape=8, dtype=np.float64)
+    temp16a = np.empty(shape=16, dtype=np.float64)
+    temp16b = np.empty(shape=16, dtype=np.float64)
+    temp16c = np.empty(shape=16, dtype=np.float64)
+    temp32a = np.empty(shape=32, dtype=np.float64)
+    temp32b = np.empty(shape=32, dtype=np.float64)
+    temp48 = np.empty(shape=48, dtype=np.float64)
+    temp64 = np.empty(shape=64, dtype=np.float64)
+    axtbb = np.empty(shape=8, dtype=np.float64)
+    axtcc = np.empty(shape=8, dtype=np.float64)
+    aytbb = np.empty(shape=8, dtype=np.float64)
+    aytcc = np.empty(shape=8, dtype=np.float64)
+    bxtaa = np.empty(shape=8, dtype=np.float64)
+    bxtcc = np.empty(shape=8, dtype=np.float64)
+    bytaa = np.empty(shape=8, dtype=np.float64)
+    bytcc = np.empty(shape=8, dtype=np.float64)
+    cxtaa = np.empty(shape=8, dtype=np.float64)
+    cxtbb = np.empty(shape=8, dtype=np.float64)
+    cytaa = np.empty(shape=8, dtype=np.float64)
+    cytbb = np.empty(shape=8, dtype=np.float64)
+    axtbc = np.empty(shape=8, dtype=np.float64)
+    aytbc = np.empty(shape=8, dtype=np.float64)
+    bxtca = np.empty(shape=8, dtype=np.float64)
+    bytca = np.empty(shape=8, dtype=np.float64)
+    cxtab = np.empty(shape=8, dtype=np.float64)
+    cytab = np.empty(shape=8, dtype=np.float64)
+    axtbct = np.empty(shape=16, dtype=np.float64)
+    aytbct = np.empty(shape=16, dtype=np.float64)
+    bxtcat = np.empty(shape=16, dtype=np.float64)
+    bytcat = np.empty(shape=16, dtype=np.float64)
+    cxtabt = np.empty(shape=16, dtype=np.float64)
+    cytabt = np.empty(shape=16, dtype=np.float64)
+    axtbctt = np.empty(shape=8, dtype=np.float64)
+    aytbctt = np.empty(shape=8, dtype=np.float64)
+    bxtcatt = np.empty(shape=8, dtype=np.float64)
+    bytcatt = np.empty(shape=8, dtype=np.float64)
+    cxtabtt = np.empty(shape=8, dtype=np.float64)
+    cytabtt = np.empty(shape=8, dtype=np.float64)
+    abt = np.empty(shape=8, dtype=np.float64)
+    bct = np.empty(shape=8, dtype=np.float64)
+    cat = np.empty(shape=8, dtype=np.float64)
+    abtt = np.empty(shape=4, dtype=np.float64)
+    bctt = np.empty(shape=4, dtype=np.float64)
+    catt = np.empty(shape=4, dtype=np.float64)
+    resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
+    iccerrboundA, iccerrboundB, iccerrboundC, splitter = exactinit2d()
+
+
+    a_x = 0.0
+    a_y = 0.0
+    b_x = 1.0
+    b_y = 0.0
+    c_x = 3.0
+    c_y = 1.0
+    d_x = 0.0
+    d_y = 0.5
+    print(orient2d(
+            a_x, a_y, b_x, b_y, c_x, c_y, splitter, B, C1, C2, D, u,
+            ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound))
+
+    print(incircle(
+            a_x, a_y, b_x, b_y, c_x, c_y, d_x, d_y, bc, ca, ab, axbc, axxbc,
+            aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet, cxab, cxxab,
+            cyab, cyyab, cdet, abdet, fin1, fin2, temp8, temp16a, temp16b,
+            temp16c, temp32a, temp32b, temp48, temp64, axtbb, axtcc, aytbb,
+            aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb,
+            axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct, aytbct, bxtcat,
+            bytcat, cxtabt, cytabt, axtbctt, aytbctt, bxtcatt, bytcatt,
+            cxtabtt, cytabtt, abt, bct, cat, abtt, bctt, catt, splitter,
+            iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound))
+
+
+if __name__ == "__main__":
+
+    test2d()
