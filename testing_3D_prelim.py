@@ -73,7 +73,7 @@ DT3.makeDT(printTime=False)
 ############################## the main experiment ##############################
 
 
-N = 1*(10**5)
+N = 5*(10**3)
 num = 10
 # flags = np.empty(shape=num, dtype=np.bool_)
 pathCases = np.empty(shape=num, dtype=np.int64)

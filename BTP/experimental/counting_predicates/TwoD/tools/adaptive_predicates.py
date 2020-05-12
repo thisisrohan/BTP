@@ -309,7 +309,7 @@ def Two_Square(a1, a0, splitter):
 #*****************************************************************************#
 
 @njit
-def exactinit2d():
+def exactinit2d(points):
 
     every_other = True
     half = np.float64(0.5)
@@ -327,6 +327,12 @@ def exactinit2d():
         else:
             break
     splitter += one
+
+    xmin = np.min(points[:, 0])
+    ymin = np.min(points[:, 1])
+    xmax = np.max(points[:, 0])
+    ymax = np.max(points[:, 1])
+    b = max(xmax-xmin, ymax-ymin)
 
     # Error bounds for orientation and incircle tests.
     resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
@@ -336,13 +342,16 @@ def exactinit2d():
     iccerrboundA = (10.0 + 96.0 * epsilon) * epsilon
     iccerrboundB = (4.0 + 48.0 * epsilon) * epsilon
     iccerrboundC = (44.0 + 576.0 * epsilon) * epsilon * epsilon
+    static_filter_o2d = 32 * epsilon * b * b
+    static_filter_i2d = 1984 * epsilon * b * b * b
 
     return resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
-           iccerrboundA, iccerrboundB, iccerrboundC, splitter
+           iccerrboundA, iccerrboundB, iccerrboundC, splitter, \
+           static_filter_o2d, static_filter_i2d
 
 
 @njit
-def exactinit3d():
+def exactinit3d(points):
 
     every_other = True
     half = np.float64(0.5)
@@ -361,6 +370,14 @@ def exactinit3d():
             break
     splitter += one
 
+    xmin = np.min(points[:, 0])
+    ymin = np.min(points[:, 1])
+    zmin = np.min(points[:, 2])
+    xmax = np.max(points[:, 0])
+    ymax = np.max(points[:, 1])
+    zmax = np.max(points[:, 2])
+    b = max(xmax-xmin, ymax-ymin, zmax-zmin)
+
     # Error bounds for orientation and incircle tests.
     resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
     o3derrboundA = (7.0 + 56.0 * epsilon) * epsilon
@@ -369,9 +386,12 @@ def exactinit3d():
     isperrboundA = (16.0 + 224.0 * epsilon) * epsilon
     isperrboundB = (5.0 + 72.0 * epsilon) * epsilon
     isperrboundC = (71.0 + 1408.0 * epsilon) * epsilon * epsilon
+    static_filter_o3d = 352 * epsilon * b * b * b
+    static_filter_i3d = 33024 * epsilon * b * b * b * b
 
     return resulterrbound, o3derrboundA, o3derrboundB, o3derrboundC, \
-           isperrboundA, isperrboundB, isperrboundC, splitter
+           isperrboundA, isperrboundB, isperrboundC, splitter, \
+           static_filter_o3d, static_filter_i3d
 
 
 #*****************************************************************************#
@@ -843,7 +863,7 @@ def linear_expansion_sum_zeroelim(elen, e, flen, f, h):
 #                                                                             #
 #   scale_expansion()   Multiply an expansion by a scalar.                    #
 #                                                                             #
-#   Sets h = e + f.  See either version of Shewchuk's paper for details.      #
+#   Sets h = be.  See either version of Shewchuk's paper for details.         #
 #                                                                             #
 #   Maintains the nonoverlapping property.  If round-to-even is used (as      #
 #   with IEEE 754), maintains the strongly nonoverlapping and nonadjacent     #
@@ -877,7 +897,7 @@ def scale_expansion(elen, e, b, h, splitter):
 #                                eliminating zero components from the         #
 #                                output expansion.                            #
 #                                                                             #
-#   Sets h = e + f.  See either version of Shewchuk's paper for details.      #
+#   Sets h = be.  See either version of Shewchuk's paper for details.         #
 #                                                                             #
 #   Maintains the nonoverlapping property.  If round-to-even is used (as      #
 #   with IEEE 754), maintains the strongly nonoverlapping and nonadjacent     #
@@ -903,7 +923,7 @@ def scale_expansion_zeroelim(elen, e, b, h, splitter):
         sum_, hh = Two_Sum(Q, product0)
         if hh != 0:
             h[hindex] = hh
-            hindex +=1
+            hindex += 1
         Q, hh = Fast_Two_Sum(product1, sum_)
         if hh != 0:
             h[hindex] = hh
@@ -1019,7 +1039,7 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
     det = estimate(4, B)
     errbound = ccwerrboundB * detsum
     if (det >= errbound) or (-det >= errbound):
-        return det
+        return det, 2
 
     acxtail = Two_Diff_Tail(pa_x, pc_x, acx)
     bcxtail = Two_Diff_Tail(pb_x, pc_x, bcx)
@@ -1028,13 +1048,14 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
 
     if (acxtail == 0.0) and (acytail == 0.0) and \
             (bcxtail == 0.0) and (bcytail == 0.0):
-        return det
+        return det, 3
 
     errbound = ccwerrboundC * detsum + resulterrbound * np.abs(det)
     det += (acx * bcytail + bcy * acxtail) - \
            (acy * bcxtail + bcx * acytail)
-    if (det >= errbound) or (-det >= errbound):
-        return det
+    # if (det >= errbound) or (-det >= errbound):
+    if np.abs(det) >= errbound:
+        return det, 4
 
     s1, s0 = Two_Product(acxtail, bcy, splitter)
     t1, t0 = Two_Product(acytail, bcx, splitter)
@@ -1051,12 +1072,13 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
     u[3], u[2], u[1], u[0] = Two_Two_Diff(s1, s0, t1, t0)
     Dlength = fast_expansion_sum_zeroelim(C2length, C2, 4, u, D)
 
-    return D[Dlength - 1]
+    return D[Dlength - 1], 5
 
 
 @njit
 def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
-             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound):
+             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
+             detsum):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1065,26 +1087,9 @@ def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
     len(u) = 4
     '''
 
-    detleft = (pa_x - pc_x) * (pb_y - pc_y)
-    detright = (pa_y - pc_y) * (pb_x - pc_x)
-    det = detleft - detright
-
-    if detleft > 0.0:
-        if detright <= 0.0:
-            return det
-        else:
-            detsum = detleft + detright
-    elif detleft < 0.0:
-        if detright >= 0.0:
-            return det
-        else:
-            detsum = -detleft - detright
-    else:
-        return det
-
     errbound = ccwerrboundA * detsum
-    if (det >= errbound) or (-det >= errbound):
-        return det
+    if np.abs(det) >= errbound:
+        return det, 1
 
     return orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter,
                          B, C1, C2, D, u, ccwerrboundB, ccwerrboundC,
@@ -1741,7 +1746,7 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
     det = estimate(finlength, fin1)
     errbound = iccerrboundB * permanent
     if (det >= errbound) or (-det >= errbound):
-        return det
+        return det, 2
 
     adxtail = Two_Diff_Tail(pa_x, pd_x, adx)
     adytail = Two_Diff_Tail(pa_y, pd_y, ady)
@@ -1751,7 +1756,7 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
     cdytail = Two_Diff_Tail(pc_y, pd_y, cdy)
     if (adxtail == 0.0) and (bdxtail == 0.0) and (cdxtail == 0.0) and \
             (adytail == 0.0) and (bdytail == 0.0) and (cdytail == 0.0):
-        return det
+        return det, 3
 
 
     errbound = iccerrboundC * permanent + resulterrbound * np.abs(det)
@@ -1765,7 +1770,7 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                                        - (ady * bdxtail + bdx * adytail))
             + 2.0*(cdx * cdxtail + cdy * cdytail)*(adx * bdy - ady * bdx))
     if (det >= errbound) or (-det >= errbound):
-        return det
+        return det, 4
 
     finnow = fin1
     finother = fin2
@@ -2300,7 +2305,7 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             finnow = finother
             finother = finswap
 
-    return finnow[finlength - 1]
+    return finnow[finlength - 1], 5
 
 
 @njit
@@ -2313,7 +2318,7 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
              cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
              aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat, abtt,
              bctt, catt, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
-             resulterrbound):
+             resulterrbound, det, permanent):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2387,35 +2392,9 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
     len(catt) = 4
     '''
 
-    adx = pa_x - pd_x
-    bdx = pb_x - pd_x
-    cdx = pc_x - pd_x
-    ady = pa_y - pd_y
-    bdy = pb_y - pd_y
-    cdy = pc_y - pd_y
-
-    bdxcdy = bdx * cdy
-    cdxbdy = cdx * bdy
-    alift = adx * adx + ady * ady
-
-    cdxady = cdx * ady
-    adxcdy = adx * cdy
-    blift = bdx * bdx + bdy * bdy
-
-    adxbdy = adx * bdy
-    bdxady = bdx * ady
-    clift = cdx * cdx + cdy * cdy
-
-    det = alift * (bdxcdy - cdxbdy) + \
-          blift * (cdxady - adxcdy) + \
-          clift * (adxbdy - bdxady)
-
-    permanent = (np.abs(bdxcdy) + np.abs(cdxbdy)) * alift + \
-                (np.abs(cdxady) + np.abs(adxcdy)) * blift + \
-                (np.abs(adxbdy) + np.abs(bdxady)) * clift
     errbound = iccerrboundA * permanent
-    if (det > errbound) or (-det > errbound):
-        return det
+    if np.abs(det) > errbound:
+        return det, 1
 
     return incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y,
                          permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet,

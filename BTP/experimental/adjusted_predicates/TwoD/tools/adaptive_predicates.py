@@ -309,7 +309,7 @@ def Two_Square(a1, a0, splitter):
 #*****************************************************************************#
 
 @njit
-def exactinit2d():
+def exactinit2d(points):
 
     every_other = True
     half = np.float64(0.5)
@@ -327,6 +327,12 @@ def exactinit2d():
         else:
             break
     splitter += one
+
+    xmin = np.min(points[:, 0])
+    ymin = np.min(points[:, 1])
+    xmax = np.max(points[:, 0])
+    ymax = np.max(points[:, 1])
+    b = max(xmax-xmin, ymax-ymin)
 
     # Error bounds for orientation and incircle tests.
     resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
@@ -336,13 +342,16 @@ def exactinit2d():
     iccerrboundA = (10.0 + 96.0 * epsilon) * epsilon
     iccerrboundB = (4.0 + 48.0 * epsilon) * epsilon
     iccerrboundC = (44.0 + 576.0 * epsilon) * epsilon * epsilon
+    static_filter_o2d = 32 * epsilon * b * b
+    static_filter_i2d = 1984 * epsilon * b * b * b
 
     return resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
-           iccerrboundA, iccerrboundB, iccerrboundC, splitter
+           iccerrboundA, iccerrboundB, iccerrboundC, splitter, \
+           static_filter_o2d, static_filter_i2d
 
 
 @njit
-def exactinit3d():
+def exactinit3d(points):
 
     every_other = True
     half = np.float64(0.5)
@@ -361,6 +370,14 @@ def exactinit3d():
             break
     splitter += one
 
+    xmin = np.min(points[:, 0])
+    ymin = np.min(points[:, 1])
+    zmin = np.min(points[:, 2])
+    xmax = np.max(points[:, 0])
+    ymax = np.max(points[:, 1])
+    zmax = np.max(points[:, 2])
+    b = max(xmax-xmin, ymax-ymin, zmax-zmin)
+
     # Error bounds for orientation and incircle tests.
     resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
     o3derrboundA = (7.0 + 56.0 * epsilon) * epsilon
@@ -369,9 +386,12 @@ def exactinit3d():
     isperrboundA = (16.0 + 224.0 * epsilon) * epsilon
     isperrboundB = (5.0 + 72.0 * epsilon) * epsilon
     isperrboundC = (71.0 + 1408.0 * epsilon) * epsilon * epsilon
+    static_filter_o3d = 352 * epsilon * b * b * b
+    static_filter_i3d = 33024 * epsilon * b * b * b * b
 
     return resulterrbound, o3derrboundA, o3derrboundB, o3derrboundC, \
-           isperrboundA, isperrboundB, isperrboundC, splitter
+           isperrboundA, isperrboundB, isperrboundC, splitter, \
+           static_filter_o3d, static_filter_i3d
 
 
 #*****************************************************************************#
@@ -1033,7 +1053,8 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
     errbound = ccwerrboundC * detsum + resulterrbound * np.abs(det)
     det += (acx * bcytail + bcy * acxtail) - \
            (acy * bcxtail + bcx * acytail)
-    if (det >= errbound) or (-det >= errbound):
+    # if (det >= errbound) or (-det >= errbound):
+    if np.abs(det) >= errbound:
         return det
 
     s1, s0 = Two_Product(acxtail, bcy, splitter)
@@ -1056,7 +1077,8 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
 
 @njit
 def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
-             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound):
+             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
+             static_filter_o2d, det, detsum):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1065,25 +1087,33 @@ def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
     len(u) = 4
     '''
 
-    detleft = (pa_x - pc_x) * (pb_y - pc_y)
-    detright = (pa_y - pc_y) * (pb_x - pc_x)
-    det = detleft - detright
+    # detleft = (pa_x - pc_x) * (pb_y - pc_y)
+    # detright = (pa_y - pc_y) * (pb_x - pc_x)
+    # det = detleft - detright
 
-    if detleft > 0.0:
-        if detright <= 0.0:
-            return det
-        else:
-            detsum = detleft + detright
-    elif detleft < 0.0:
-        if detright >= 0.0:
-            return det
-        else:
-            detsum = -detleft - detright
-    else:
-        return det
+    # if detleft > 0.0:
+    #     if detright <= 0.0:
+    #         return det, 0
+    #     elif (det > static_filter_o2d) or (-det > static_filter_o2d):
+    #         return det, 0
+    #     else:
+    #         detsum = detleft + detright
+    # elif detleft < 0.0:
+    #     if detright >= 0.0:
+    #         return det, 0
+    #     elif (det > static_filter_o2d) or (-det > static_filter_o2d):
+    #         return det, 0
+    #     else:
+    #         detsum = -detleft - detright
+    # else:
+    #     return det, 0
+    # if np.abs(det) > static_filter_o2d:
+    #     return det, 0
 
+    # detsum = np.abs(detleft) + np.abs(detright)
     errbound = ccwerrboundA * detsum
-    if (det >= errbound) or (-det >= errbound):
+    # if (det >= errbound) or (-det >= errbound):
+    if np.abs(det) >= errbound:
         return det
 
     return orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter,
@@ -2313,7 +2343,7 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
              cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
              aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat, abtt,
              bctt, catt, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
-             resulterrbound):
+             resulterrbound, static_filter_i2d, det, permanent):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2387,34 +2417,8 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
     len(catt) = 4
     '''
 
-    adx = pa_x - pd_x
-    bdx = pb_x - pd_x
-    cdx = pc_x - pd_x
-    ady = pa_y - pd_y
-    bdy = pb_y - pd_y
-    cdy = pc_y - pd_y
-
-    bdxcdy = bdx * cdy
-    cdxbdy = cdx * bdy
-    alift = adx * adx + ady * ady
-
-    cdxady = cdx * ady
-    adxcdy = adx * cdy
-    blift = bdx * bdx + bdy * bdy
-
-    adxbdy = adx * bdy
-    bdxady = bdx * ady
-    clift = cdx * cdx + cdy * cdy
-
-    det = alift * (bdxcdy - cdxbdy) + \
-          blift * (cdxady - adxcdy) + \
-          clift * (adxbdy - bdxady)
-
-    permanent = (np.abs(bdxcdy) + np.abs(cdxbdy)) * alift + \
-                (np.abs(cdxady) + np.abs(adxcdy)) * blift + \
-                (np.abs(adxbdy) + np.abs(bdxady)) * clift
     errbound = iccerrboundA * permanent
-    if (det > errbound) or (-det > errbound):
+    if np.abs(det) > errbound:
         return det
 
     return incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y,
