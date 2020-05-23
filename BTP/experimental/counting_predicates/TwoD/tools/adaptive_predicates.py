@@ -1619,6 +1619,14 @@ def orient3d(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
 #*****************************************************************************#
 
 @njit
+def swap(arr1, arr2, arr_len):
+    for i in range(arr_len):
+        # temp = arr1[i]
+        arr1[i] = arr2[i]
+        # arr2[i] = temp
+    return
+
+@njit
 def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                   bc, ca, ab, axbc, axxbc, aybc, ayybc, adet, bxca, bxxca,
                   byca, byyca, bdet, cxab, cxxab, cyab, cyyab, cdet, abdet,
@@ -1772,8 +1780,8 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
     if (det >= errbound) or (-det >= errbound):
         return det, 4
 
-    finnow = fin1
-    finother = fin2
+    # finnow = fin1
+    # finother = fin2
 
     if (bdxtail != 0.0) or (bdytail != 0.0) or \
             (cdxtail != 0.0) or (cdytail != 0.0):
@@ -1813,11 +1821,16 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                                                 temp16blen, temp16b, temp32a)
         temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
                                                 temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
-                                                temp48, finother)
-        finswap = finnow
-        finnow = finother
-        finother = finswap
+        # finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+        #                                         temp48, finother)
+        finlength = fast_expansion_sum_zeroelim(finlength, fin1, temp48len,
+                                                temp48, fin2)
+        # finswap = finnow
+        # finnow = finother
+        # finother = finswap
+        # swap(fin1, fin2, finlength)
+        for i in range(finlength):
+            fin1[i] = fin2[i]
 
     if adytail != 0.0:
         aytbclen = scale_expansion_zeroelim(4, bc, adytail, aytbc, splitter)
@@ -1836,11 +1849,16 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                                                 temp16blen, temp16b, temp32a)
         temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
                                                 temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
-                                                temp48, finother)
-        finswap = finnow
-        finnow = finother
-        finother = finswap
+        # finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+        #                                         temp48, finother)
+        finlength = fast_expansion_sum_zeroelim(finlength, fin1, temp48len,
+                                                temp48, fin2)
+        # finswap = finnow
+        # finnow = finother
+        # finother = finswap
+        # swap(fin1, fin2, finlength)
+        for i in range(finlength):
+            fin1[i] = fin2[i]
 
     if bdxtail != 0.0:
         bxtcalen = scale_expansion_zeroelim(4, ca, bdxtail, bxtca, splitter)
@@ -1859,11 +1877,16 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                                                 temp16blen, temp16b, temp32a)
         temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
                                                 temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
-                                                temp48, finother)
-        finswap = finnow
-        finnow = finother
-        finother = finswap
+        # finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+        #                                         temp48, finother)
+        finlength = fast_expansion_sum_zeroelim(finlength, fin1, temp48len,
+                                                temp48, fin2)
+        # finswap = finnow
+        # finnow = finother
+        # finother = finswap
+        # swap(fin1, fin2, finlength)
+        for i in range(finlength):
+            fin1[i] = fin2[i]
 
     if bdytail != 0.0:
         bytcalen = scale_expansion_zeroelim(4, ca, bdytail, bytca, splitter)
@@ -1882,11 +1905,16 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                                                 temp16blen, temp16b, temp32a)
         temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
                                                 temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
-                                                temp48, finother)
-        finswap = finnow
-        finnow = finother
-        finother = finswap
+        # finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+        #                                         temp48, finother)
+        finlength = fast_expansion_sum_zeroelim(finlength, fin1, temp48len,
+                                                temp48, fin2)
+        # finswap = finnow
+        # finnow = finother
+        # finother = finswap
+        # swap(fin1, fin2, finlength)
+        for i in range(finlength):
+            fin1[i] = fin2[i]
 
     if cdxtail != 0.0:
         cxtablen = scale_expansion_zeroelim(4, ab, cdxtail, cxtab, splitter)
@@ -1905,11 +1933,16 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                                                 temp16blen, temp16b, temp32a)
         temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
                                                 temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
-                                                temp48, finother)
-        finswap = finnow
-        finnow = finother
-        finother = finswap
+        # finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+        #                                         temp48, finother)
+        finlength = fast_expansion_sum_zeroelim(finlength, fin1, temp48len,
+                                                temp48, fin2)
+        # finswap = finnow
+        # finnow = finother
+        # finother = finswap
+        # swap(fin1, fin2, finlength)
+        for i in range(finlength):
+            fin1[i] = fin2[i]
 
     if cdytail != 0.0:
         cytablen = scale_expansion_zeroelim(4, ab, cdytail, cytab, splitter)
@@ -1928,11 +1961,16 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
                                                 temp16blen, temp16b, temp32a)
         temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
                                                 temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
-                                                temp48, finother)
-        finswap = finnow
-        finnow = finother
-        finother = finswap
+        # finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+        #                                         temp48, finother)
+        finlength = fast_expansion_sum_zeroelim(finlength, fin1, temp48len,
+                                                temp48, fin2)
+        # finswap = finnow
+        # finnow = finother
+        # finother = finswap
+        # swap(fin1, fin2, finlength)
+        for i in range(finlength):
+            fin1[i] = fin2[i]
 
 
     if (adxtail != 0.0) or (adytail != 0.0):
@@ -1969,36 +2007,54 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
                                                     temp32alen, temp32a,
                                                     temp48)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp48len, temp48,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp48len, temp48,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
             if bdytail != 0.0:
                 temp8len = scale_expansion_zeroelim(4, cc, adxtail, temp8,
                                                     splitter)
                 temp16alen = scale_expansion_zeroelim(temp8len, temp8, bdytail,
                                                       temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                #                                         temp16alen, temp16a,
+                #                                         finother)
+                finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                         temp16alen, temp16a,
-                                                        finother)
-                finswap = finnow
-                finnow = finother
-                finother = finswap
+                                                        fin2)
+                # finswap = finnow
+                # finnow = finother
+                # finother = finswap
+                # swap(fin1, fin2, finlength)
+                for i in range(finlength):
+                    fin1[i] = fin2[i]
 
             if cdytail != 0.0:
                 temp8len = scale_expansion_zeroelim(4, bb, -adxtail, temp8,
                                                     splitter)
                 temp16alen = scale_expansion_zeroelim(temp8len, temp8, cdytail,
                                                       temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                #                                         temp16alen, temp16a,
+                #                                         finother)
+                finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                         temp16alen, temp16a,
-                                                        finother)
-                finswap = finnow
-                finnow = finother
-                finother = finswap
+                                                        fin2)
+                # finswap = finnow
+                # finnow = finother
+                # finother = finswap
+                # swap(fin1, fin2, finlength)
+                for i in range(finlength):
+                    fin1[i] = fin2[i]
 
             temp32alen = scale_expansion_zeroelim(axtbctlen, axtbct, adxtail,
                                                 temp32a, splitter)
@@ -2014,12 +2070,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
                                                     temp32blen, temp32b,
                                                     temp64)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp64len, temp64,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp64len, temp64,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
         if adytail != 0.0:
             temp16alen = scale_expansion_zeroelim(aytbclen, aytbc, adytail,
@@ -2031,12 +2093,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
                                                     temp32alen, temp32a,
                                                     temp48)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp48len, temp48,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp48len, temp48,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
             temp32alen = scale_expansion_zeroelim(aytbctlen, aytbct, adytail,
                                                   temp32a, splitter)
@@ -2052,12 +2120,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
                                                     temp32blen, temp32b,
                                                     temp64)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp64len, temp64,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp64len, temp64,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
     if (bdxtail != 0.0) or (bdytail != 0.0):
         if (cdxtail != 0.0) or (cdytail != 0.0) or \
@@ -2093,34 +2167,54 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
                                                     temp32alen, temp32a,
                                                     temp48)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp48len, temp48,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp48len, temp48,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
+
             if cdytail != 0.0:
                 temp8len = scale_expansion_zeroelim(4, aa, bdxtail, temp8,
                                                     splitter)
                 temp16alen = scale_expansion_zeroelim(temp8len, temp8, cdytail,
                                                       temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                #                                         temp16alen, temp16a,
+                #                                         finother)
+                finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                         temp16alen, temp16a,
-                                                        finother)
-                finswap = finnow
-                finnow = finother
-                finother = finswap
+                                                        fin2)
+                # finswap = finnow
+                # finnow = finother
+                # finother = finswap
+                # swap(fin1, fin2, finlength)
+                for i in range(finlength):
+                    fin1[i] = fin2[i]
+
             if adytail != 0.0:
                 temp8len = scale_expansion_zeroelim(4, cc, -bdxtail, temp8,
                                                     splitter)
                 temp16alen = scale_expansion_zeroelim(temp8len, temp8, adytail,
                                                       temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                #                                         temp16alen, temp16a,
+                #                                         finother)
+                finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                         temp16alen, temp16a,
-                                                        finother)
-                finswap = finnow
-                finnow = finother
-                finother = finswap
+                                                        fin2)
+                # finswap = finnow
+                # finnow = finother
+                # finother = finswap
+                # swap(fin1, fin2, finlength)
+                for i in range(finlength):
+                    fin1[i] = fin2[i]
 
             temp32alen = scale_expansion_zeroelim(bxtcatlen, bxtcat, bdxtail,
                                                   temp32a, splitter)
@@ -2136,12 +2230,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
                                                     temp32blen, temp32b,
                                                     temp64)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp64len, temp64,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp64len, temp64,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
         if bdytail != 0.0:
             temp16alen = scale_expansion_zeroelim(bytcalen, bytca, bdytail,
@@ -2153,12 +2253,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
                                                     temp32alen, temp32a,
                                                     temp48)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp48len, temp48,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp48len, temp48,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
             temp32alen = scale_expansion_zeroelim(bytcatlen, bytcat, bdytail,
                                                   temp32a, splitter)
@@ -2174,12 +2280,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
                                                     temp32blen, temp32b,
                                                     temp64)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp64len, temp64,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp64len, temp64,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
     if (cdxtail != 0.0) or (cdytail != 0.0):
         if (adxtail != 0.0) or (adytail != 0.0) or \
@@ -2215,36 +2327,54 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
                                                     temp32alen, temp32a,
                                                     temp48)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp48len, temp48,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp48len, temp48,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
-      
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
+
             if adytail != 0.0:
                 temp8len = scale_expansion_zeroelim(4, bb, cdxtail, temp8,
                                                     splitter)
                 temp16alen = scale_expansion_zeroelim(temp8len, temp8, adytail,
                                                       temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                #                                         temp16alen, temp16a,
+                #                                         finother)
+                finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                         temp16alen, temp16a,
-                                                        finother)
-                finswap = finnow
-                finnow = finother
-                finother = finswap
+                                                        fin2)
+                # finswap = finnow
+                # finnow = finother
+                # finother = finswap
+                # swap(fin1, fin2, finlength)
+                for i in range(finlength):
+                    fin1[i] = fin2[i]
 
             if bdytail != 0.0:
                 temp8len = scale_expansion_zeroelim(4, aa, -cdxtail, temp8,
                                                     splitter)
                 temp16alen = scale_expansion_zeroelim(temp8len, temp8, bdytail,
                                                       temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                #                                         temp16alen, temp16a,
+                #                                         finother)
+                finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                         temp16alen, temp16a,
-                                                        finother)
-                finswap = finnow
-                finnow = finother
-                finother = finswap
+                                                        fin2)
+                # finswap = finnow
+                # finnow = finother
+                # finother = finswap
+                # swap(fin1, fin2, finlength)
+                for i in range(finlength):
+                    fin1[i] = fin2[i]
 
             temp32alen = scale_expansion_zeroelim(cxtabtlen, cxtabt, cdxtail,
                                                   temp32a, splitter)
@@ -2260,12 +2390,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
                                                     temp32blen, temp32b,
                                                     temp64)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp64len, temp64,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp64len, temp64,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
         if cdytail != 0.0:
             temp16alen = scale_expansion_zeroelim(cytablen, cytab, cdytail,
@@ -2277,12 +2413,18 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
                                                     temp32alen, temp32a,
                                                     temp48)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp48len, temp48,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp48len, temp48,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
             temp32alen = scale_expansion_zeroelim(cytabtlen, cytabt, cdytail,
                                                   temp32a, splitter)
@@ -2298,14 +2440,20 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
             temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
                                                     temp32blen, temp32b,
                                                     temp64)
-            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            # finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+            #                                         temp64len, temp64,
+            #                                         finother)
+            finlength = fast_expansion_sum_zeroelim(finlength, fin1,
                                                     temp64len, temp64,
-                                                    finother)
-            finswap = finnow
-            finnow = finother
-            finother = finswap
+                                                    fin2)
+            # finswap = finnow
+            # finnow = finother
+            # finother = finswap
+            # swap(fin1, fin2, finlength)
+            for i in range(finlength):
+                fin1[i] = fin2[i]
 
-    return finnow[finlength - 1], 5
+    return fin1[finlength - 1], 5
 
 
 @njit
@@ -2395,6 +2543,8 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
     errbound = iccerrboundA * permanent
     if np.abs(det) > errbound:
         return det, 1
+
+    # return det, 2
 
     return incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y,
                          permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet,

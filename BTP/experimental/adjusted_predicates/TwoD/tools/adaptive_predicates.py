@@ -1077,8 +1077,8 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
 
 @njit
 def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
-             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
-             static_filter_o2d, det, detsum):
+             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
+             detsum):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1086,33 +1086,8 @@ def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
     len(D) = 16
     len(u) = 4
     '''
-
-    # detleft = (pa_x - pc_x) * (pb_y - pc_y)
-    # detright = (pa_y - pc_y) * (pb_x - pc_x)
-    # det = detleft - detright
-
-    # if detleft > 0.0:
-    #     if detright <= 0.0:
-    #         return det, 0
-    #     elif (det > static_filter_o2d) or (-det > static_filter_o2d):
-    #         return det, 0
-    #     else:
-    #         detsum = detleft + detright
-    # elif detleft < 0.0:
-    #     if detright >= 0.0:
-    #         return det, 0
-    #     elif (det > static_filter_o2d) or (-det > static_filter_o2d):
-    #         return det, 0
-    #     else:
-    #         detsum = -detleft - detright
-    # else:
-    #     return det, 0
-    # if np.abs(det) > static_filter_o2d:
-    #     return det, 0
-
-    # detsum = np.abs(detleft) + np.abs(detright)
+    
     errbound = ccwerrboundA * detsum
-    # if (det >= errbound) or (-det >= errbound):
     if np.abs(det) >= errbound:
         return det
 
@@ -2343,7 +2318,7 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
              cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
              aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat, abtt,
              bctt, catt, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
-             resulterrbound, static_filter_i2d, det, permanent):
+             resulterrbound, det, permanent):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2421,18 +2396,20 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
     if np.abs(det) > errbound:
         return det
 
-    return incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y,
-                         permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet,
-                         bxca, bxxca, byca, byyca, bdet, cxab, cxxab, cyab,
-                         cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, u, v,
-                         temp8, temp16a, temp16b, temp16c, temp32a, temp32b,
-                         temp48, temp64, axtbb, axtcc, aytbb, aytcc, bxtaa,
-                         bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb,
-                         axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct,
-                         aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
-                         aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct,
-                         cat, abtt, bctt, catt, splitter, iccerrboundB,
-                         iccerrboundC, resulterrbound)
+    return det
+
+    # return incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y,
+    #                      permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet,
+    #                      bxca, bxxca, byca, byyca, bdet, cxab, cxxab, cyab,
+    #                      cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, u, v,
+    #                      temp8, temp16a, temp16b, temp16c, temp32a, temp32b,
+    #                      temp48, temp64, axtbb, axtcc, aytbb, aytcc, bxtaa,
+    #                      bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb,
+    #                      axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct,
+    #                      aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
+    #                      aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct,
+    #                      cat, abtt, bctt, catt, splitter, iccerrboundB,
+    #                      iccerrboundC, resulterrbound)
 
 
 #*****************************************************************************#

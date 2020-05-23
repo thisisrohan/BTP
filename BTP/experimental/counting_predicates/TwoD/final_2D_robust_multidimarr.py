@@ -731,14 +731,14 @@ def perf(N):
     num_runs = 5
     time_arr = np.empty(shape=num_runs, dtype=np.float64)
 
-    # points = np.zeros(shape=(2*N, 2), dtype=np.float64)
-    # points[0:N, 0] = np.linspace(-100.0, 100.0, N)
-    # # points[:, 1] = 0.001*np.random.randn(N)
-    # points[0:N, 1] = 2*points[0:N, 0] + 2.0# + 0.001*np.random.rand(N)
-    # points[0, 1] = 0.0
-    # theta = np.arange(N)*2*np.pi/N
-    # points[N:, 0] = np.cos(theta)
-    # points[N:, 1] = np.sin(theta)
+    points = np.zeros(shape=(2*N, 2), dtype=np.float64)
+    points[0:N, 0] = np.linspace(-100.0, 100.0, N)
+    # points[:, 1] = 0.001*np.random.randn(N)
+    points[0:N, 1] = 2*points[0:N, 0] + 2.0# + 0.001*np.random.rand(N)
+    points[0, 1] = 0.0
+    theta = np.arange(N)*2*np.pi/N
+    points[N:, 0] = np.cos(theta)
+    points[N:, 1] = np.sin(theta)
 
     np.random.seed(seed=12345)
     for i in range(num_runs):
@@ -750,12 +750,13 @@ def perf(N):
         time_arr[i] = end - start
         print("RUN {} : {} s. \n".format(i, time_arr[i]))
         del DT
-        del points
+        # del points
 
     return np.min(time_arr)
 
 if __name__ == "__main__":
     import sys
     N = int(sys.argv[1])
+    # N = 200
     time = perf(N)
     print("   Time taken to make the triangulation : {} s".format(time))

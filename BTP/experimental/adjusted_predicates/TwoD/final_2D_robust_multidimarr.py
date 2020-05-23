@@ -67,7 +67,7 @@ def _walk(
             det = orient2d(
                 point_x, point_y, c_x, c_y, b_x, b_y, splitter, B, C1, C2, D,
                 u, ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
-                static_filter_o2d, det, detsum)
+                det, detsum)
         if det > 0:
             t_op_index_in_t = 0
         else:
@@ -79,7 +79,7 @@ def _walk(
                 det = orient2d(
                     point_x, point_y, a_x, a_y, c_x, c_y, splitter, B, C1, C2,
                     D, u, ccwerrboundA, ccwerrboundB, ccwerrboundC,
-                    resulterrbound, static_filter_o2d, det, detsum)
+                    resulterrbound, det, detsum)
             if det > 0:
                 t_op_index_in_t = 1
             else:
@@ -91,7 +91,7 @@ def _walk(
                     det = orient2d(
                         point_x, point_y, b_x, b_y, a_x, a_y, splitter, B, C1,
                         C2, D, u, ccwerrboundA, ccwerrboundB, ccwerrboundC,
-                        resulterrbound, static_filter_o2d, det, detsum)
+                        resulterrbound, det, detsum)
                 if det > 0:
                     t_op_index_in_t = 2
 
@@ -171,13 +171,13 @@ def _cavity_helper(
         det_left = (point_x-c_x)*(b_y-c_y)
         det_right = (point_y-c_y)*(b_x-c_x)
         det = det_left - det_right
-
+        num = 0
         if np.abs(det) <= static_filter_o2d:
             detsum = np.abs(det_left) + np.abs(det_right)
             det = orient2d(
                 point_x, point_y, b_x, b_y, c_x, c_y, splitter, B, C1, C2, D,
                 u, ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
-                static_filter_o2d, det, detsum)
+                det, detsum)
 
         if det > 0:
             return True
@@ -223,7 +223,6 @@ def _cavity_helper(
         det = alift * (bdxcdy - cdxbdy) + \
               blift * (cdxady - adxcdy) + \
               clift * (adxbdy - bdxady)
-
         if np.abs(det) <= static_filter_i2d:
             permanent = (np.abs(bdxcdy) + np.abs(cdxbdy)) * alift + \
                         (np.abs(cdxady) + np.abs(adxcdy)) * blift + \
@@ -238,8 +237,7 @@ def _cavity_helper(
                 bytca, cxtab, cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt,
                 cytabt, axtbctt, aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt,
                 abt, bct, cat, abtt, bctt, catt, splitter, iccerrboundA,
-                iccerrboundB, iccerrboundC, resulterrbound, static_filter_i2d,
-                det, permanent)
+                iccerrboundB, iccerrboundC, resulterrbound, det, permanent)
 
         if det >= 0.0:
             return True
@@ -715,7 +713,7 @@ def perf(N):
         DT.makeDT()
         end = time.time()
         time_arr[i] = end - start
-        print("RUN {} : {} s.".format(i, time_arr[i]))
+        print("RUN {} : {} s. \n".format(i, time_arr[i]))
         del DT
         del points
 

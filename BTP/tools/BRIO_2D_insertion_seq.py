@@ -243,12 +243,6 @@ def make_BRIO(points):
         boundary_indices[1:] - boundary_indices[0:-1]
     )
 
-    # rho = 5  # number of points per cell
-    # if max_number_of_points_in_a_round <= int(rho*(2**(2*4))):
-    #     p = 4
-    # else:
-    #     p = int(np.ceil(0.5*np.log2(max_number_of_points_in_a_round/rho)))
-
     rho = 5  # number of points per cell
     if len_points <= int(rho*(2**(2*4))):
         p = 4
