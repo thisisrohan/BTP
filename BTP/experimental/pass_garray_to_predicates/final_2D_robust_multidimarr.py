@@ -1,12 +1,21 @@
 import numpy as np
-# import BTP.tools.BRIO_2D_multidimarr as BRIO
-# import mytools.BRIO_2D_multidimarr as BRIO
+# import tools.BRIO_2D_multidimarr as BRIO
+# from tools.adaptive_predicates import incircle, orient2d, exactinit2d
 import BTP.experimental.pass_garray_to_predicates.tools.BRIO_2D_multidimarr as BRIO
+from BTP.experimental.pass_garray_to_predicates.tools.adaptive_predicates import incircle, orient2d, exactinit2d
+import time
+
+
+def njit(f):
+    return f
 from numba import njit
 
 
-@njit
-def _walk(point_id, t_index, vertices_ID, neighbour_ID, points, gv):
+@njit(cache=True)
+def _walk(
+        point_id, t_index, vertices_ID, neighbour_ID, points, gv, splitter,
+        global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
+        static_filter_o2d):
     '''
     Walks from the given tri (t_index) to the tri enclosing the given point.
 
@@ -23,9 +32,7 @@ def _walk(point_id, t_index, vertices_ID, neighbour_ID, points, gv):
     '''
 
     gv_idx = 3
-    if vertices_ID[t_index, 0] == gv:
-        gv_idx = 0
-    elif vertices_ID[t_index, 1] == gv:
+    if vertices_ID[t_index, 1] == gv:
         gv_idx = 1
     elif vertices_ID[t_index, 2] == gv:
         gv_idx = 2
@@ -40,27 +47,51 @@ def _walk(point_id, t_index, vertices_ID, neighbour_ID, points, gv):
 
     while True:
         # i.e. t_index is a real tri
+
         t_op_index_in_t = 4
 
-        ax = points[vertices_ID[t_index, 0], 0]
-        ay = points[vertices_ID[t_index, 0], 1]
-        bx = points[vertices_ID[t_index, 1], 0]
-        by = points[vertices_ID[t_index, 1], 1]
-        cx = points[vertices_ID[t_index, 2], 0]
-        cy = points[vertices_ID[t_index, 2], 1]
+        a_x = points[vertices_ID[t_index, 0], 0]
+        a_y = points[vertices_ID[t_index, 0], 1]
+        b_x = points[vertices_ID[t_index, 1], 0]
+        b_y = points[vertices_ID[t_index, 1], 1]
+        c_x = points[vertices_ID[t_index, 2], 0]
+        c_y = points[vertices_ID[t_index, 2], 1]
 
-        temp = (point_x-ax)*(by-ay) - (point_y-ay)*(bx-ax)
-
-        if temp > 0:
-            t_op_index_in_t = 2
+        det_left = (point_x-b_x)*(c_y-b_y)
+        det_right = (point_y-b_y)*(c_x-b_x)
+        det = det_left - det_right
+        if np.abs(det) < static_filter_o2d:
+            detsum = np.abs(det_left) + np.abs(det_right)
+            det = orient2d(
+                point_x, point_y, c_x, c_y, b_x, b_y, splitter, global_arr,
+                ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
+                detsum)
+        if det > 0:
+            t_op_index_in_t = 0
         else:
-            temp = (point_x-bx)*(cy-by) - (point_y-by)*(cx-bx)
-            if temp > 0:
-                t_op_index_in_t = 0
+            det_left = (point_x-c_x)*(a_y-c_y)
+            det_right = (point_y-c_y)*(a_x-c_x)
+            det = det_left - det_right
+            if np.abs(det) < static_filter_o2d:
+                detsum = np.abs(det_left) + np.abs(det_right)
+                det = orient2d(
+                    point_x, point_y, a_x, a_y, c_x, c_y, splitter, global_arr,
+                    ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
+                    det, detsum)
+            if det > 0:
+                t_op_index_in_t = 1
             else:
-                temp = (point_x-cx)*(ay-cy) - (point_y-cy)*(ax-cx)
-                if temp > 0:
-                    t_op_index_in_t = 1
+                det_left = (point_x-a_x)*(b_y-a_y)
+                det_right =  (point_y-a_y)*(b_x-a_x)
+                det = det_left - det_right
+                if np.abs(det) < static_filter_o2d:
+                    detsum = np.abs(det_left) + np.abs(det_right)
+                    det = orient2d(
+                        point_x, point_y, b_x, b_y, a_x, a_y, splitter,
+                        global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC,
+                        resulterrbound, det, detsum)
+                if det > 0:
+                    t_op_index_in_t = 2
 
         if t_op_index_in_t != 4:
             t_index = neighbour_ID[t_index, t_op_index_in_t]//3
@@ -68,9 +99,7 @@ def _walk(point_id, t_index, vertices_ID, neighbour_ID, points, gv):
             # point_id lies inside t_index
             break
 
-        if vertices_ID[t_index, 0] == gv:
-            break
-        elif vertices_ID[t_index, 1] == gv:
+        if vertices_ID[t_index, 1] == gv:
             break
         elif vertices_ID[t_index, 2] == gv:
             break
@@ -78,8 +107,11 @@ def _walk(point_id, t_index, vertices_ID, neighbour_ID, points, gv):
     return t_index
 
 
-@njit
-def _cavity_helper(point_id, t_index, points, vertices_ID, gv):
+@njit(cache=True)
+def _cavity_helper(
+        point_id, t_index, points, vertices_ID, gv, global_arr, splitter,
+        iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound, ccwerrboundA,
+        ccwerrboundB, ccwerrboundC, static_filter_o2d, static_filter_i2d):
     '''
     Checks whether the given point lies inside the circumsphere the given tri.
     Returns True if it does.
@@ -97,9 +129,7 @@ def _cavity_helper(point_id, t_index, points, vertices_ID, gv):
     '''
 
     gv_idx = 3
-    if vertices_ID[t_index, 0] == gv:
-        gv_idx = 0
-    elif vertices_ID[t_index, 1] == gv:
+    if vertices_ID[t_index, 1] == gv:
         gv_idx = 1
     elif vertices_ID[t_index, 2] == gv:
         gv_idx = 2
@@ -109,27 +139,25 @@ def _cavity_helper(point_id, t_index, points, vertices_ID, gv):
 
     if gv_idx != 3:
         # t_index is a ghost triangle
-        if gv_idx == 0:
-            b_x = points[vertices_ID[t_index, 1], 0]
-            b_y = points[vertices_ID[t_index, 1], 1]
-            c_x = points[vertices_ID[t_index, 2], 0]
-            c_y = points[vertices_ID[t_index, 2], 1]
-        elif gv_idx == 1:
-            b_x = points[vertices_ID[t_index, 2], 0]
-            b_y = points[vertices_ID[t_index, 2], 1]
-            c_x = points[vertices_ID[t_index, 0], 0]
-            c_y = points[vertices_ID[t_index, 0], 1]
-        elif gv_idx == 2:
-            b_x = points[vertices_ID[t_index, 0], 0]
-            b_y = points[vertices_ID[t_index, 0], 1]
-            c_x = points[vertices_ID[t_index, 1], 0]
-            c_y = points[vertices_ID[t_index, 1], 1]
+        b_x = points[vertices_ID[t_index, (gv_idx + 1) % 3], 0]
+        b_y = points[vertices_ID[t_index, (gv_idx + 1) % 3], 1]
+        c_x = points[vertices_ID[t_index, (gv_idx + 2) % 3], 0]
+        c_y = points[vertices_ID[t_index, (gv_idx + 2) % 3], 1]
 
-        area_t = (point_x-c_x)*(b_y-c_y) - (point_y-c_y)*(b_x-c_x)
+        det_left = (point_x-c_x)*(b_y-c_y)
+        det_right = (point_y-c_y)*(b_x-c_x)
+        det = det_left - det_right
+        num = 0
+        if np.abs(det) <= static_filter_o2d:
+            detsum = np.abs(det_left) + np.abs(det_right)
+            det = orient2d(
+                point_x, point_y, b_x, b_y, c_x, c_y, splitter, global_arr,
+                ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
+                detsum)
 
-        if area_t > 0:
+        if det > 0:
             return True
-        elif area_t == 0:
+        elif det == 0:
             m1_x = point_x - b_x
             m2_x = c_x - point_x
             m1_y = point_y - b_y
@@ -142,19 +170,19 @@ def _cavity_helper(point_id, t_index, points, vertices_ID, gv):
             return False
     else:
         # t_index is a real triangle
-        ax = points[vertices_ID[t_index, 0], 0]
-        ay = points[vertices_ID[t_index, 0], 1]
-        bx = points[vertices_ID[t_index, 1], 0]
-        by = points[vertices_ID[t_index, 1], 1]
-        cx = points[vertices_ID[t_index, 2], 0]
-        cy = points[vertices_ID[t_index, 2], 1]
+        a_x = points[vertices_ID[t_index, 0], 0]
+        a_y = points[vertices_ID[t_index, 0], 1]
+        b_x = points[vertices_ID[t_index, 1], 0]
+        b_y = points[vertices_ID[t_index, 1], 1]
+        c_x = points[vertices_ID[t_index, 2], 0]
+        c_y = points[vertices_ID[t_index, 2], 1]
 
-        adx = ax - point_x
-        bdx = bx - point_x
-        cdx = cx - point_x
-        ady = ay - point_y
-        bdy = by - point_y
-        cdy = cy - point_y
+        adx = a_x - point_x
+        bdx = b_x - point_x
+        cdx = c_x - point_x
+        ady = a_y - point_y
+        bdy = b_y - point_y
+        cdy = c_y - point_y
 
         bdxcdy = bdx * cdy
         cdxbdy = cdx * bdy
@@ -171,17 +199,28 @@ def _cavity_helper(point_id, t_index, points, vertices_ID, gv):
         det = alift * (bdxcdy - cdxbdy) + \
               blift * (cdxady - adxcdy) + \
               clift * (adxbdy - bdxady)
+        if np.abs(det) <= static_filter_i2d:
+            permanent = (np.abs(bdxcdy) + np.abs(cdxbdy)) * alift + \
+                        (np.abs(cdxady) + np.abs(adxcdy)) * blift + \
+                        (np.abs(adxbdy) + np.abs(bdxady)) * clift
+            det = incircle(
+                a_x, a_y, b_x, b_y, c_x, c_y, point_x, point_y, global_arr,
+                splitter, iccerrboundA, iccerrboundB, iccerrboundC,
+                resulterrbound, det, permanent)
 
-        if det >= 0:
+        if det >= 0.0:
             return True
         else:
             return False
 
 
-@njit
+@njit(cache=True)
 def _identify_cavity(
         points, point_id, t_index, neighbour_ID, vertices_ID, ic_bad_tri,
-        ic_boundary_tri, ic_boundary_vtx, gv, bad_tri_indicator_arr):
+        ic_boundary_tri, ic_boundary_vtx, gv, bad_tri_indicator_arr,
+        global_arr, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
+        resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC,
+        static_filter_o2d, static_filter_i2d):
     '''
     Identifies all the 'bad' triangles, i.e. the triangles whose circumcircles
     enclose the given point. Returns a list of the indices of the bad triangles
@@ -229,10 +268,12 @@ def _identify_cavity(
             if not bad_tri_indicator_arr[jth_nbr_idx]:
                 # i.e. jth_nbr_idx has not been stored in the ic_bad_tri
                 # array yet.
-                inside_tri_flag = _cavity_helper(
-                    point_id, jth_nbr_idx, points, vertices_ID, gv)
-
-                if inside_tri_flag:
+                inside_tri = _cavity_helper(
+                    point_id, jth_nbr_idx, points, vertices_ID, gv, global_arr,
+                    splitter, iccerrboundA, iccerrboundB, iccerrboundC,
+                    resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC,
+                    static_filter_o2d, static_filter_i2d)
+                if inside_tri is True:
                     # i.e. the j'th neighbour is a bad triangle
                     if ic_bad_tri_end >= ic_len_bad_tri:
                         temp_arr1 = np.empty(2*ic_len_bad_tri, dtype=np.int64)
@@ -288,7 +329,7 @@ def _identify_cavity(
            ic_boundary_tri_end, ic_boundary_vtx
 
 
-@njit
+@njit(cache=True)
 def _make_Delaunay_ball(
         point_id, bad_tri, bad_tri_end, boundary_tri, boundary_tri_end,
         boundary_vtx, points, neighbour_ID, vertices_ID, num_tri, gv):
@@ -316,7 +357,7 @@ def _make_Delaunay_ball(
             t_index = num_tri
             num_tri += 1
 
-        t_info = boundary_tri[i] 
+        t_info = boundary_tri[i]
         neighbour_ID[t_index, 0] = t_info
         vertices_ID[t_index, 0] = point_id
         vertices_ID[t_index, 1] = boundary_vtx[i, 0]
@@ -338,7 +379,7 @@ def _make_Delaunay_ball(
                     neighbour_ID[t2, 1] = 3*t1+2
                     break
 
-    old_tri = bad_tri[bad_tri_end-1]
+    old_tri =  bad_tri[bad_tri_end-1]
 
     if boundary_tri_end < bad_tri_end:
         old_tri = bad_tri[boundary_tri_end-1]
@@ -368,24 +409,31 @@ def _make_Delaunay_ball(
     return num_tri, old_tri
 
 
-@njit
+@njit(cache=True)
 def assembly(
         points, vertices_ID, neighbour_ID, insertion_seq, gv, ic_bad_tri,
-        ic_boundary_tri, ic_boundary_vtx, bad_tri_indicator_arr):
+        ic_boundary_tri, ic_boundary_vtx, bad_tri_indicator_arr, global_arr):
+
+    resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, iccerrboundA, \
+    iccerrboundB, iccerrboundC, splitter, static_filter_o2d, \
+    static_filter_i2d = exactinit2d(points)
 
     num_tri = initialize(points, vertices_ID, neighbour_ID, insertion_seq)
 
     old_tri = np.int64(0)
-    for point_id in np.arange(3, gv):
-
+    for point_id in range(3, gv):
         enclosing_tri = _walk(
-            point_id, old_tri, vertices_ID, neighbour_ID, points, gv)
+            point_id, old_tri, vertices_ID, neighbour_ID, points, gv, splitter,
+            global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC, 
+            resulterrbound, static_filter_o2d)
 
-        ic_bad_tri, ic_bad_tri_end, ic_boundary_tri, \
-        ic_boundary_tri_end, ic_boundary_vtx = _identify_cavity(
+        ic_bad_tri, ic_bad_tri_end, ic_boundary_tri, ic_boundary_tri_end, \
+        ic_boundary_vtx = _identify_cavity(
             points, point_id, enclosing_tri, neighbour_ID, vertices_ID,
             ic_bad_tri, ic_boundary_tri, ic_boundary_vtx, gv,
-            bad_tri_indicator_arr)
+            bad_tri_indicator_arr, global_arr, splitter, iccerrboundA,
+            iccerrboundB, iccerrboundC, resulterrbound, ccwerrboundA,
+            ccwerrboundB, ccwerrboundC, static_filter_o2d, static_filter_i2d)
 
         num_tri, old_tri = _make_Delaunay_ball(
             point_id, ic_bad_tri, ic_bad_tri_end, ic_boundary_tri,
@@ -439,7 +487,7 @@ def exportDT_njit(
     return rt_end
 
 
-@njit
+@njit(cache=True)
 def initialize(points, vertices_ID, neighbour_ID, insertion_seq):
 
     N = len(points)
@@ -488,8 +536,8 @@ def initialize(points, vertices_ID, neighbour_ID, insertion_seq):
     vertices_ID[2, 2] = 2      #
 
     vertices_ID[3, 0] = 2      #
-    vertices_ID[3, 1] = N     # ---> 3rd triangle [ghost]
-    vertices_ID[3, 2] = 0     #
+    vertices_ID[3, 1] = N      # ---> 3rd triangle [ghost]
+    vertices_ID[3, 2] = 0      #
 
     neighbour_ID[0, 0] = 3*2+1     #
     neighbour_ID[0, 1] = 3*3+1     # ---> 0th triangle [real]
@@ -504,8 +552,8 @@ def initialize(points, vertices_ID, neighbour_ID, insertion_seq):
     neighbour_ID[2, 2] = 3*1+0     #
 
     neighbour_ID[3, 0] = 3*1+2     #
-    neighbour_ID[3, 1] = 3*0+1    # ---> 3rd triangle [ghost]
-    neighbour_ID[3, 2] = 3*2+0    #
+    neighbour_ID[3, 1] = 3*0+1     # ---> 3rd triangle [ghost]
+    neighbour_ID[3, 2] = 3*2+0     #
 
     num_tri += 4
 
@@ -518,7 +566,6 @@ class Delaunay2D:
         '''
         points : N x 2 array/list of points
         '''
-
         N = len(points)
         self._gv = N
         self._vertices_ID = np.empty(shape=(2*N-2, 3), dtype=np.int64)
@@ -533,11 +580,12 @@ class Delaunay2D:
         ic_boundary_tri = np.empty(50, dtype=np.int64)
         ic_boundary_vtx = np.empty(shape=(50, 2), dtype=np.int64)
         bad_tri_indicator_arr = np.zeros(shape=2*N-2, dtype=np.bool_)
+        global_arr = np.empty(shape=3236, dtype=np.float64)
 
         assembly(
             self._points, self._vertices_ID, self._neighbour_ID,
             self._insertion_seq, self._gv, ic_bad_tri, ic_boundary_tri,
-            ic_boundary_vtx, bad_tri_indicator_arr)
+            ic_boundary_vtx, bad_tri_indicator_arr, global_arr)
 
         self.simplices = None
         self.neighbours = None
@@ -557,39 +605,51 @@ class Delaunay2D:
         return self.simplices, self.neighbours
 
 
+
 def perf(N):
     import time
 
     np.random.seed(seed=10)
 
     print("\npriming numba")
-    temp_pts = np.random.rand(2*10).reshape((10, 2))
+    temp_pts = np.random.rand(10, 2)
     tempDT = Delaunay2D(temp_pts)
-    print("DT initialized")
-    tempDT.makeDT()
+    print("triangulation made")
+    simplices, nbrs = tempDT.exportDT()
+    print("triangulation exported")
     print("numba primed \n")
 
     del temp_pts
     del tempDT
 
-    np.random.seed(seed=20)
     num_runs = 5
     time_arr = np.empty(shape=num_runs, dtype=np.float64)
 
+    # points = np.zeros(shape=(2*N, 2), dtype=np.float64)
+    # points[0:N, 0] = np.linspace(-100.0, 100.0, N)
+    # # points[:, 1] = 0.001*np.random.randn(N)
+    # points[0:N, 1] = 2*points[0:N, 0] + 2.0# + 0.001*np.random.rand(N)
+    # points[0, 1] = 0.0
+    # theta = np.arange(N)*2*np.pi/N
+    # points[N:, 0] = np.cos(theta)
+    # points[N:, 1] = np.sin(theta)
+
+    np.random.seed(seed=12345)
     for i in range(num_runs):
-        points = np.random.rand(2*N).reshape((N, 2))
+        points = np.random.randn(N, 2)
         start = time.time()
         DT = Delaunay2D(points)
-        DT.makeDT()
         end = time.time()
         time_arr[i] = end - start
-        print("Run {} : {} s.".format(i, time_arr[i]))
+        start = time.time()
+        simplices, nbrs = DT.exportDT()
+        end = time.time()
+        print("RUN {} : {} s.".format(i, time_arr[i]))
+        print("export time : {} s. \n".format(end - start))
         del DT
         del points
 
-    running_time = np.min(time_arr)
-
-    return running_time
+    return np.min(time_arr)
 
 if __name__ == "__main__":
     import sys

@@ -1,7 +1,7 @@
 import numpy as np
 import BTP.core.final_2D_multidimarr as D1
 import BTP.core.final_2D_robust_multidimarr as D2
-import BTP.experimental.adjusted_predicates.TwoD.final_2D_robust_multidimarr as D3
+import BTP.experimental.pass_garray_to_predicates.final_2D_robust_multidimarr as D3
 from scipy.spatial import Delaunay
 import triangle as tr
 import pandas as pd
@@ -31,7 +31,6 @@ def run_it(i, j, k, running_times, num_points_arr):
     print("   --- final_2D (non-robust) ---   ")
     start = time.time()
     DT = D1.Delaunay2D(points_rest)
-    DT.makeDT()
     end = time.time()
     print("Time taken to make the triangulation : {} s.\n".format(end-start))
     if j == 0:
@@ -43,7 +42,6 @@ def run_it(i, j, k, running_times, num_points_arr):
     print("   --- final_2D_robust (no static filters) ---   ")
     start = time.time()
     DT = D2.Delaunay2D(points_rest)
-    DT.makeDT()
     end = time.time()
     print("Time taken to make the triangulation : {} s.\n".format(end-start))
     if j == 0:
@@ -55,7 +53,6 @@ def run_it(i, j, k, running_times, num_points_arr):
     print("   --- final_2D_robust (with static filters) ---   ")
     start = time.time()
     DT = D3.Delaunay2D(points_rest)
-    DT.makeDT()
     end = time.time()
     print("Time taken to make the triangulation : {} s.\n".format(end-start))
     if j == 0:
@@ -105,19 +102,19 @@ def run_it(i, j, k, running_times, num_points_arr):
 
 temp = np.random.rand(2*10).reshape((10, 2))
 tempDT = D1.Delaunay2D(temp)
-tempDT.makeDT()
+# tempDT.makeDT()
 del tempDT
 del temp
 
 temp = np.random.rand(2*10).reshape((10, 2))
 tempDT = D2.Delaunay2D(temp)
-tempDT.makeDT()
+# tempDT.makeDT()
 del tempDT
 del temp
 
 temp = np.random.rand(2*10).reshape((10, 2))
 tempDT = D3.Delaunay2D(temp)
-tempDT.makeDT()
+# tempDT.makeDT()
 del tempDT
 del temp
 
@@ -168,6 +165,6 @@ plt.legend([
 
 plt.xlabel(r"Number of Points", size=10)
 plt.ylabel(r"Running Time $(s)$", size=10)
-plt.title(r"Results", size=13)
+plt.suptitle(r"Results", size=13)
 
 plt.savefig("results_2D_inhouse_vs_rest_01.png", dpi=300, bbox_to_inches="tight")

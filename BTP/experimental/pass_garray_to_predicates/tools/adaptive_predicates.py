@@ -5,35 +5,35 @@ def njit(f):
 from numba import njit
 
 
-@njit
+@njit(cache=True)
 def Fast_Two_Sum_Tail(a, b, x):
     bvirt = x - a
     y = b - bvirt
     return y
 
 
-@njit
+@njit(cache=True)
 def Fast_Two_Sum(a, b):
     x = a + b
     y = Fast_Two_Sum_Tail(a, b, x)
     return x, y
 
 
-@njit
+@njit(cache=True)
 def Fast_Two_Diff_Tail(a, b, x):
     bvirt = a - x
     y = bvirt - b
     return y
 
 
-@njit
+@njit(cache=True)
 def Fast_Two_Diff(a, b):
     x = a - b
     y = Fast_Two_Diff_Tail(a, b, x)
     return x, y
 
 
-@njit
+@njit(cache=True)
 def Two_Sum_Tail(a, b, x):
     bvirt = x - a
     avirt = x - bvirt
@@ -43,14 +43,14 @@ def Two_Sum_Tail(a, b, x):
     return y
 
 
-@njit
+@njit(cache=True)
 def Two_Sum(a, b):
     x = a + b
     y = Two_Sum_Tail(a, b, x)
     return x, y
 
 
-@njit
+@njit(cache=True)
 def Two_Diff_Tail(a, b, x):
     bvirt = a - x
     avirt = x + bvirt
@@ -60,14 +60,14 @@ def Two_Diff_Tail(a, b, x):
     return y
 
 
-@njit
+@njit(cache=True)
 def Two_Diff(a, b):
     x = a - b
     y = Two_Diff_Tail(a, b, x)
     return x, y
 
 
-@njit
+@njit(cache=True)
 def Split(a, splitter):
     c = splitter * a
     abig = c - a
@@ -76,7 +76,7 @@ def Split(a, splitter):
     return ahi, alo
 
 
-@njit
+@njit(cache=True)
 def Two_Product_Tail(a, b, x, splitter):
     ahi, alo = Split(a, splitter)
     bhi, blo = Split(b, splitter)
@@ -87,7 +87,7 @@ def Two_Product_Tail(a, b, x, splitter):
     return y
 
 
-@njit
+@njit(cache=True)
 def Two_Product(a, b, splitter):
     x = a * b
     y = Two_Product_Tail(a, b, x, splitter)
@@ -97,7 +97,7 @@ def Two_Product(a, b, splitter):
 # Two_Product_Presplit() is Two_Product() where one of the inputs has already 
 # been split. Avoids redundant splitting.
 
-@njit
+@njit(cache=True)
 def Two_Product_Presplit(a, b, bhi, blo, splitter):
     x = a * b
     ahi, alo = Split(a, splitter)
@@ -111,7 +111,7 @@ def Two_Product_Presplit(a, b, bhi, blo, splitter):
 # Two_Product_2Presplit() is Two_Product() where both of the inputs have
 # already been split. Avoids redundant splitting.
 
-@njit
+@njit(cache=True)
 def Two_Product_2Presplit(a, ahi, alo, b, bhi, blo):
     x = a * b
     err1 = x - (ahi * bhi)
@@ -123,7 +123,7 @@ def Two_Product_2Presplit(a, ahi, alo, b, bhi, blo):
 
 # Square() can be done more quickly than Two_Product().
 
-@njit
+@njit(cache=True)
 def Square_Tail(a, x, splitter):
     ahi, alo = Split(a, splitter)
     err1 = x - (ahi * ahi)
@@ -132,7 +132,7 @@ def Square_Tail(a, x, splitter):
     return y
 
 
-@njit
+@njit(cache=True)
 def Square(a, splitter):
     x = a * a
     y = Square_Tail(a, x, splitter)
@@ -142,63 +142,63 @@ def Square(a, splitter):
 # Functions for summing expansions of various fixed lengths. These are all
 # unrolled versions of Expansion_Sum().
 
-@njit
+@njit(cache=True)
 def Two_One_Sum(a1, a0, b):
     _i, x0 = Two_Sum(a0, b)
     x2, x1 = Two_Sum(a1, _i)
     return x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Two_One_Diff(a1, a0, b):
     _i, x0 = Two_Diff(a0, b)
     x2, x1 = Two_Sum(a1, _i)
     return x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Two_Two_Sum(a1, a0, b1, b0):
     _j, _0, x0 = Two_One_Sum(a1, a0, b0)
     x3, x2, x1 = Two_One_Sum(_j, _0, b1)
     return x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Two_Two_Diff(a1, a0, b1, b0):
     _j, _0, x0 = Two_One_Diff(a1, a0, b0)
     x3, x2, x1 = Two_One_Diff(_j, _0, b1)
     return x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Four_One_Sum(a3, a2, a1, a0, b):
     _j, x1, x0 = Two_One_Sum(a1, a0, b)
     x4, x3, x2 = Two_One_Sum(a3, a2, _j)
     return x4, x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Four_Two_Sum(a3, a2, a1, a0, b1, b0):
     _k, _2, _1, _0, x0 = Four_One_Sum(a3, a2, a1, a0, b0)
     x5, x4, x3, x2, x1 = Four_One_Sum(_k, _2, _1, _0, b1)
     return x5, x4, x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Four_Four_Sum(a3, a2, a1, a0, b4, b3, b1, b0):
     _l, _2, _1, _0, x1, x0 = Four_Two_Sum(a3, a2, a1, a0, b1, b0)
     x7, x6, x5, x4, x3, x2 = Four_Two_Sum(_l, _2, _1, _0, b4, b3)
     return x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Eight_One_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b):
     _j, x3, x2, x1, x0 = Four_One_Sum(a3, a2, a1, a0, b)
     x8, x7, x6, x5, x4 = Four_One_Sum(a7, a6, a5, a4, _j)
     return x8, x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Eight_Two_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b1, b0):
     _k, _6, _5, _4, _3, _2, _1, _0, x0 = Eight_One_Sum(a7, a6, a5, a4, a3,
                                                        a2, a1, a0, b0)
@@ -207,7 +207,7 @@ def Eight_Two_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b1, b0):
     return x9, x8, x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Eight_Four_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b4, b3, b1, b0):
     _l, _6, _5, _4, _3, _2, _1, _0, x1, x0 = Eight_Two_Sum(a7, a6, a5, a4, a3,
                                                            a2, a1, a0, b1, b0)
@@ -219,7 +219,7 @@ def Eight_Four_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b4, b3, b1, b0):
 
 # Functions for multiplying expansions of various fixed lengths.
 
-@njit
+@njit(cache=True)
 def Two_One_Product(a1, a0, b, splitter):
     bhi, blo = Split(b, splitter)
     _i, x0 = Two_Product_Presplit(a0, b, bhi, blo, splitter)
@@ -229,7 +229,7 @@ def Two_One_Product(a1, a0, b, splitter):
     return x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Four_One_Product(a3, a2, a1, a0, b, splitter):
     bhi, blo = Split(b, splitter)
     _i, x0 = Two_Product_Presplit(a0, b, bhi, blo, splitter)
@@ -245,7 +245,7 @@ def Four_One_Product(a3, a2, a1, a0, b, splitter):
     return x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@njit
+@njit(cache=True)
 def Two_Two_Product(a1, a0, b1, b0, splitter):
     a0hi, a0lo = Split(a0, splitter)
     bhi, blo = Split(b0, splitter)
@@ -278,7 +278,7 @@ def Two_Two_Product(a1, a0, b1, b0, splitter):
 # product of two different expansions of length two, and the result is
 # guaranteed to have no more than six (rather than eight) components.
 
-@njit
+@njit(cache=True)
 def Two_Square(a1, a0, splitter):
     _j, x0 = Square(a0, splitter)
     _0 = a0 + a0
@@ -308,8 +308,8 @@ def Two_Square(a1, a0, splitter):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
-def exactinit2d():
+@njit(cache=True)
+def exactinit2d(points):
 
     every_other = True
     half = np.float64(0.5)
@@ -327,6 +327,12 @@ def exactinit2d():
         else:
             break
     splitter += one
+
+    xmin = np.min(points[:, 0])
+    ymin = np.min(points[:, 1])
+    xmax = np.max(points[:, 0])
+    ymax = np.max(points[:, 1])
+    b = max(xmax-xmin, ymax-ymin)
 
     # Error bounds for orientation and incircle tests.
     resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
@@ -336,13 +342,16 @@ def exactinit2d():
     iccerrboundA = (10.0 + 96.0 * epsilon) * epsilon
     iccerrboundB = (4.0 + 48.0 * epsilon) * epsilon
     iccerrboundC = (44.0 + 576.0 * epsilon) * epsilon * epsilon
+    static_filter_o2d = 32 * epsilon * b * b
+    static_filter_i2d = 1984 * epsilon * b * b * b
 
     return resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
-           iccerrboundA, iccerrboundB, iccerrboundC, splitter
+           iccerrboundA, iccerrboundB, iccerrboundC, splitter, \
+           static_filter_o2d, static_filter_i2d
 
 
-@njit
-def exactinit3d():
+@njit(cache=True)
+def exactinit3d(points):
 
     every_other = True
     half = np.float64(0.5)
@@ -361,6 +370,14 @@ def exactinit3d():
             break
     splitter += one
 
+    xmin = np.min(points[:, 0])
+    ymin = np.min(points[:, 1])
+    zmin = np.min(points[:, 2])
+    xmax = np.max(points[:, 0])
+    ymax = np.max(points[:, 1])
+    zmax = np.max(points[:, 2])
+    b = max(xmax-xmin, ymax-ymin, zmax-zmin)
+
     # Error bounds for orientation and incircle tests.
     resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
     o3derrboundA = (7.0 + 56.0 * epsilon) * epsilon
@@ -369,9 +386,12 @@ def exactinit3d():
     isperrboundA = (16.0 + 224.0 * epsilon) * epsilon
     isperrboundB = (5.0 + 72.0 * epsilon) * epsilon
     isperrboundC = (71.0 + 1408.0 * epsilon) * epsilon * epsilon
+    static_filter_o3d = 352 * epsilon * b * b * b
+    static_filter_i3d = 33024 * epsilon * b * b * b * b
 
     return resulterrbound, o3derrboundA, o3derrboundB, o3derrboundC, \
-           isperrboundA, isperrboundB, isperrboundC, splitter
+           isperrboundA, isperrboundB, isperrboundC, splitter, \
+           static_filter_o3d, static_filter_i3d
 
 
 #*****************************************************************************#
@@ -387,7 +407,7 @@ def exactinit3d():
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def grow_expansion(elen, e, b, h):
     # e and h can be the same.
 
@@ -415,7 +435,7 @@ def grow_expansion(elen, e, b, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def grow_expansion_zeroelim(elen, e, b, h):
     # e and h can be the same.
 
@@ -448,7 +468,7 @@ def grow_expansion_zeroelim(elen, e, b, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def expansion_sum(elen, e, flen, f, h):
     # e and h can be the same, but f and h cannot.
 
@@ -485,7 +505,7 @@ def expansion_sum(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def expansion_sum_zeroelim1(elen, e, flen, f, h):
     # e and h can be the same, but f and h cannot.
 
@@ -532,7 +552,7 @@ def expansion_sum_zeroelim1(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def expansion_sum_zeroelim2(elen, e, flen, f, h):
     # e and h can be the same, but f and h cannot.
 
@@ -576,7 +596,7 @@ def expansion_sum_zeroelim2(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def fast_expansion_sum(elen, e, flen, f, h):
     # h cannot be e or f.
 
@@ -647,7 +667,7 @@ def fast_expansion_sum(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
     # h cannot be e or f.
 
@@ -727,7 +747,7 @@ def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def linear_expansion_sum(elen, e, flen, f, h):
     # h cannot be e or f.
 
@@ -785,7 +805,7 @@ def linear_expansion_sum(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def linear_expansion_sum_zeroelim(elen, e, flen, f, h):
     # h cannot be e or f.
 
@@ -852,7 +872,7 @@ def linear_expansion_sum_zeroelim(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def scale_expansion(elen, e, b, h, splitter):
     # e and h cannot be the same.
 
@@ -886,7 +906,7 @@ def scale_expansion(elen, e, b, h, splitter):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def scale_expansion_zeroelim(elen, e, b, h, splitter):
     # e and h cannot be the same.
 
@@ -928,7 +948,7 @@ def scale_expansion_zeroelim(elen, e, b, h, splitter):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def compress(elen, e, h):
     # e and h may be the same.
 
@@ -965,7 +985,7 @@ def compress(elen, e, h):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def estimate(elen, e):
 
     Q = e[0]
@@ -994,7 +1014,7 @@ def estimate(elen, e):
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def orient2dadapt(
         pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, global_arr,
         ccwerrboundB, ccwerrboundC, resulterrbound):
@@ -1040,7 +1060,8 @@ def orient2dadapt(
     errbound = ccwerrboundC * detsum + resulterrbound * np.abs(det)
     det += (acx * bcytail + bcy * acxtail) - \
            (acy * bcxtail + bcx * acytail)
-    if (det >= errbound) or (-det >= errbound):
+    # if (det >= errbound) or (-det >= errbound):
+    if np.abs(det) >= errbound:
         return det
 
     s1, s0 = Two_Product(acxtail, bcy, splitter)
@@ -1061,10 +1082,10 @@ def orient2dadapt(
     return D[Dlength - 1]
 
 
-@njit
+@njit(cache=True)
 def orient2d(
-        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, global_arr, ccwerrboundA,
-        ccwerrboundB, ccwerrboundC, resulterrbound):
+    pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, global_arr, ccwerrboundA,
+    ccwerrboundB, ccwerrboundC, resulterrbound, det, detsum):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1072,26 +1093,9 @@ def orient2d(
     len(D) = 16
     len(u) = 4
     '''
-
-    detleft = (pa_x - pc_x) * (pb_y - pc_y)
-    detright = (pa_y - pc_y) * (pb_x - pc_x)
-    det = detleft - detright
-
-    if detleft > 0.0:
-        if detright <= 0.0:
-            return det
-        else:
-            detsum = detleft + detright
-    elif detleft < 0.0:
-        if detright >= 0.0:
-            return det
-        else:
-            detsum = -detleft - detright
-    else:
-        return det
-
+    
     errbound = ccwerrboundA * detsum
-    if (det >= errbound) or (-det >= errbound):
+    if np.abs(det) >= errbound:
         return det
 
     return orient2dadapt(
@@ -1122,7 +1126,7 @@ def orient2d(
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def orient3dadapt(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
                   abdet, fin1, fin2, at_b, at_c, bt_c, bt_a, ct_a, ct_b,
                   bct, cat, abt, u, v, w, splitter, o3derrboundB, o3derrboundC,
@@ -1539,7 +1543,7 @@ def orient3dadapt(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
     return finnow[finlength - 1]
 
 
-@njit
+@njit(cache=True)
 def orient3d(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
              abdet, fin1, fin2, at_b, at_c, bt_c, bt_a, ct_a, ct_b,
              bct, cat, abt, u, v, w, splitter, o3derrboundA, o3derrboundB,
@@ -1621,7 +1625,7 @@ def orient3d(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
 #                                                                             #
 #*****************************************************************************#
 
-@njit
+@njit(cache=True)
 def incircleadapt(
         pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, global_arr,
         splitter, iccerrboundB, iccerrboundC, resulterrbound):
@@ -2374,10 +2378,11 @@ def incircleadapt(
     return finnow[finlength - 1]
 
 
-@njit
+@njit(cache=True)
 def incircle(
         pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, global_arr, splitter,
-        iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound):
+        iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound, det,
+        permanent):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2451,34 +2456,8 @@ def incircle(
     len(catt) = 4
     '''
 
-    adx = pa_x - pd_x
-    bdx = pb_x - pd_x
-    cdx = pc_x - pd_x
-    ady = pa_y - pd_y
-    bdy = pb_y - pd_y
-    cdy = pc_y - pd_y
-
-    bdxcdy = bdx * cdy
-    cdxbdy = cdx * bdy
-    alift = adx * adx + ady * ady
-
-    cdxady = cdx * ady
-    adxcdy = adx * cdy
-    blift = bdx * bdx + bdy * bdy
-
-    adxbdy = adx * bdy
-    bdxady = bdx * ady
-    clift = cdx * cdx + cdy * cdy
-
-    det = alift * (bdxcdy - cdxbdy) + \
-          blift * (cdxady - adxcdy) + \
-          clift * (adxbdy - bdxady)
-
-    permanent = (np.abs(bdxcdy) + np.abs(cdxbdy)) * alift + \
-                (np.abs(cdxady) + np.abs(adxcdy)) * blift + \
-                (np.abs(adxbdy) + np.abs(bdxady)) * clift
     errbound = iccerrboundA * permanent
-    if (det > errbound) or (-det > errbound):
+    if np.abs(det) > errbound:
         return det
 
     return incircleadapt(
@@ -2508,7 +2487,7 @@ def incircle(
 #*****************************************************************************#
 
 
-@njit
+@njit(cache=True)
 def insphereexact(pa, pb, pc, pd, pe, ab, bc, cd, de, ea, ac, bd, ce, da, eb,
                   temp8a, temp8b, temp16, abc, bcd, cde, dea, eab, abd, bce,
                   cda, deb, eac, temp48a, temp48b, abcd, bcde, cdea, deab,
@@ -2769,7 +2748,7 @@ def insphereexact(pa, pb, pc, pd, pe, ab, bc, cd, de, ea, ac, bd, ce, da, eb,
     return deter[deterlen - 1]
 
 
-@njit
+@njit(cache=True)
 def insphereadapt(pa, pb, pc, pd, pe, permanent, ab, bc, cd, de, ea, ac, bd,
                   ce, da, eb, temp8a, temp8b, temp8c, temp16, temp24, temp48,
                   xdet, ydet, zdet, xydet, adet, bdet, cdet, ddet, abdet,
@@ -3031,7 +3010,7 @@ def insphereadapt(pa, pb, pc, pd, pe, permanent, ab, bc, cd, de, ea, ac, bd,
                          deter, splitter)
 
 
-@njit
+@njit(cache=True)
 def insphere(pa, pb, pc, pd, pe, ab, bc, cd, de, ea, ac, bd, ce, da, eb,
              temp8a, temp8b, temp8c, temp16, temp24, temp48, xdet, ydet, zdet,
              xydet, adet, bdet, cdet, ddet, abdet, cddet, fin1, abc, bcd, cde,
