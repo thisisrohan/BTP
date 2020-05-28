@@ -13,9 +13,8 @@ from numba import njit
 
 @njit(cache=True)
 def _walk(
-        point_id, t_index, vertices_ID, neighbour_ID, points, gv, splitter,
-        global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
-        static_filter_o2d):
+        point_id, t_index, vertices_ID, neighbour_ID, points, gv, res_arr,
+        global_arr):
     '''
     Walks from the given tri (t_index) to the tri enclosing the given point.
 
@@ -57,39 +56,19 @@ def _walk(
         c_x = points[vertices_ID[t_index, 2], 0]
         c_y = points[vertices_ID[t_index, 2], 1]
 
-        det_left = (point_x-b_x)*(c_y-b_y)
-        det_right = (point_y-b_y)*(c_x-b_x)
-        det = det_left - det_right
-        if np.abs(det) < static_filter_o2d:
-            detsum = np.abs(det_left) + np.abs(det_right)
-            det = orient2d(
-                point_x, point_y, c_x, c_y, b_x, b_y, splitter, global_arr,
-                ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
-                detsum)
+        
+        det = orient2d(
+            point_x, point_y, c_x, c_y, b_x, b_y, res_arr, global_arr)
         if det > 0:
             t_op_index_in_t = 0
         else:
-            det_left = (point_x-c_x)*(a_y-c_y)
-            det_right = (point_y-c_y)*(a_x-c_x)
-            det = det_left - det_right
-            if np.abs(det) < static_filter_o2d:
-                detsum = np.abs(det_left) + np.abs(det_right)
-                det = orient2d(
-                    point_x, point_y, a_x, a_y, c_x, c_y, splitter, global_arr,
-                    ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
-                    det, detsum)
+            det = orient2d(
+                point_x, point_y, a_x, a_y, c_x, c_y, res_arr, global_arr)
             if det > 0:
                 t_op_index_in_t = 1
             else:
-                det_left = (point_x-a_x)*(b_y-a_y)
-                det_right =  (point_y-a_y)*(b_x-a_x)
-                det = det_left - det_right
-                if np.abs(det) < static_filter_o2d:
-                    detsum = np.abs(det_left) + np.abs(det_right)
-                    det = orient2d(
-                        point_x, point_y, b_x, b_y, a_x, a_y, splitter,
-                        global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC,
-                        resulterrbound, det, detsum)
+                det = orient2d(
+                    point_x, point_y, b_x, b_y, a_x, a_y, res_arr, global_arr)
                 if det > 0:
                     t_op_index_in_t = 2
 
@@ -109,9 +88,7 @@ def _walk(
 
 @njit(cache=True)
 def _cavity_helper(
-        point_id, t_index, points, vertices_ID, gv, global_arr, splitter,
-        iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound, ccwerrboundA,
-        ccwerrboundB, ccwerrboundC, static_filter_o2d, static_filter_i2d):
+        point_id, t_index, points, vertices_ID, gv, res_arr, global_arr):
     '''
     Checks whether the given point lies inside the circumsphere the given tri.
     Returns True if it does.
@@ -134,8 +111,8 @@ def _cavity_helper(
     elif vertices_ID[t_index, 2] == gv:
         gv_idx = 2
 
-    point_x = points[point_id, 0]
-    point_y = points[point_id, 1]
+    p_x = points[point_id, 0]
+    p_y = points[point_id, 1]
 
     if gv_idx != 3:
         # t_index is a ghost triangle
@@ -144,24 +121,15 @@ def _cavity_helper(
         c_x = points[vertices_ID[t_index, (gv_idx + 2) % 3], 0]
         c_y = points[vertices_ID[t_index, (gv_idx + 2) % 3], 1]
 
-        det_left = (point_x-c_x)*(b_y-c_y)
-        det_right = (point_y-c_y)*(b_x-c_x)
-        det = det_left - det_right
-        num = 0
-        if np.abs(det) <= static_filter_o2d:
-            detsum = np.abs(det_left) + np.abs(det_right)
-            det = orient2d(
-                point_x, point_y, b_x, b_y, c_x, c_y, splitter, global_arr,
-                ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
-                detsum)
+        det = orient2d(p_x, p_y, b_x, b_y, c_x, c_y, res_arr, global_arr)
 
         if det > 0:
             return True
         elif det == 0:
-            m1_x = point_x - b_x
-            m2_x = c_x - point_x
-            m1_y = point_y - b_y
-            m2_y = c_y - point_y
+            m1_x = p_x - b_x
+            m2_x = c_x - p_x
+            m1_y = p_y - b_y
+            m2_y = c_y - p_y
             if m1_x*m2_x >= 0 and m1_y*m2_y >= 0:
                 return True
             else:
@@ -177,36 +145,8 @@ def _cavity_helper(
         c_x = points[vertices_ID[t_index, 2], 0]
         c_y = points[vertices_ID[t_index, 2], 1]
 
-        adx = a_x - point_x
-        bdx = b_x - point_x
-        cdx = c_x - point_x
-        ady = a_y - point_y
-        bdy = b_y - point_y
-        cdy = c_y - point_y
-
-        bdxcdy = bdx * cdy
-        cdxbdy = cdx * bdy
-        alift = adx * adx + ady * ady
-
-        cdxady = cdx * ady
-        adxcdy = adx * cdy
-        blift = bdx * bdx + bdy * bdy
-
-        adxbdy = adx * bdy
-        bdxady = bdx * ady
-        clift = cdx * cdx + cdy * cdy
-
-        det = alift * (bdxcdy - cdxbdy) + \
-              blift * (cdxady - adxcdy) + \
-              clift * (adxbdy - bdxady)
-        if np.abs(det) <= static_filter_i2d:
-            permanent = (np.abs(bdxcdy) + np.abs(cdxbdy)) * alift + \
-                        (np.abs(cdxady) + np.abs(adxcdy)) * blift + \
-                        (np.abs(adxbdy) + np.abs(bdxady)) * clift
-            det = incircle(
-                a_x, a_y, b_x, b_y, c_x, c_y, point_x, point_y, global_arr,
-                splitter, iccerrboundA, iccerrboundB, iccerrboundC,
-                resulterrbound, det, permanent)
+        det = incircle(
+            a_x, a_y, b_x, b_y, c_x, c_y, p_x, p_y, res_arr, global_arr)
 
         if det >= 0.0:
             return True
@@ -217,10 +157,8 @@ def _cavity_helper(
 @njit(cache=True)
 def _identify_cavity(
         points, point_id, t_index, neighbour_ID, vertices_ID, ic_bad_tri,
-        ic_boundary_tri, ic_boundary_vtx, gv, bad_tri_indicator_arr,
-        global_arr, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
-        resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC,
-        static_filter_o2d, static_filter_i2d):
+        ic_boundary_tri, ic_boundary_vtx, gv, bad_tri_indicator_arr, res_arr,
+        global_arr):
     '''
     Identifies all the 'bad' triangles, i.e. the triangles whose circumcircles
     enclose the given point. Returns a list of the indices of the bad triangles
@@ -269,10 +207,8 @@ def _identify_cavity(
                 # i.e. jth_nbr_idx has not been stored in the ic_bad_tri
                 # array yet.
                 inside_tri = _cavity_helper(
-                    point_id, jth_nbr_idx, points, vertices_ID, gv, global_arr,
-                    splitter, iccerrboundA, iccerrboundB, iccerrboundC,
-                    resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC,
-                    static_filter_o2d, static_filter_i2d)
+                    point_id, jth_nbr_idx, points, vertices_ID, gv, res_arr,
+                    global_arr)
                 if inside_tri is True:
                     # i.e. the j'th neighbour is a bad triangle
                     if ic_bad_tri_end >= ic_len_bad_tri:
@@ -368,7 +304,7 @@ def _make_Delaunay_ball(
             if i < bad_tri_end:
                 t1 = bad_tri[i]
             else:
-                t1 = num_tri - (boundary_tri_end-i)
+                t1 = num_tri - (boundary_tri_end - i)
             for j in range(boundary_tri_end):
                 if j < bad_tri_end:
                     t2 = bad_tri[j]
@@ -412,28 +348,23 @@ def _make_Delaunay_ball(
 @njit(cache=True)
 def assembly(
         points, vertices_ID, neighbour_ID, insertion_seq, gv, ic_bad_tri,
-        ic_boundary_tri, ic_boundary_vtx, bad_tri_indicator_arr, global_arr):
+        ic_boundary_tri, ic_boundary_vtx, bad_tri_indicator_arr, global_arr,
+        res_arr):
 
-    resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, iccerrboundA, \
-    iccerrboundB, iccerrboundC, splitter, static_filter_o2d, \
-    static_filter_i2d = exactinit2d(points)
-
+    exactinit2d(points, res_arr)
     num_tri = initialize(points, vertices_ID, neighbour_ID, insertion_seq)
-
     old_tri = np.int64(0)
+
     for point_id in range(3, gv):
         enclosing_tri = _walk(
-            point_id, old_tri, vertices_ID, neighbour_ID, points, gv, splitter,
-            global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC, 
-            resulterrbound, static_filter_o2d)
+            point_id, old_tri, vertices_ID, neighbour_ID, points, gv, res_arr,
+            global_arr)
 
         ic_bad_tri, ic_bad_tri_end, ic_boundary_tri, ic_boundary_tri_end, \
         ic_boundary_vtx = _identify_cavity(
             points, point_id, enclosing_tri, neighbour_ID, vertices_ID,
             ic_bad_tri, ic_boundary_tri, ic_boundary_vtx, gv,
-            bad_tri_indicator_arr, global_arr, splitter, iccerrboundA,
-            iccerrboundB, iccerrboundC, resulterrbound, ccwerrboundA,
-            ccwerrboundB, ccwerrboundC, static_filter_o2d, static_filter_i2d)
+            bad_tri_indicator_arr, res_arr, global_arr)
 
         num_tri, old_tri = _make_Delaunay_ball(
             point_id, ic_bad_tri, ic_bad_tri_end, ic_boundary_tri,
@@ -581,11 +512,12 @@ class Delaunay2D:
         ic_boundary_vtx = np.empty(shape=(50, 2), dtype=np.int64)
         bad_tri_indicator_arr = np.zeros(shape=2*N-2, dtype=np.bool_)
         global_arr = np.empty(shape=3236, dtype=np.float64)
+        res_arr = np.empty(shape=10, dtype=np.float64)
 
         assembly(
             self._points, self._vertices_ID, self._neighbour_ID,
             self._insertion_seq, self._gv, ic_bad_tri, ic_boundary_tri,
-            ic_boundary_vtx, bad_tri_indicator_arr, global_arr)
+            ic_boundary_vtx, bad_tri_indicator_arr, global_arr, res_arr)
 
         self.simplices = None
         self.neighbours = None

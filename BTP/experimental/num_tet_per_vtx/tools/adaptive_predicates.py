@@ -1015,8 +1015,9 @@ def estimate(elen, e):
 #*****************************************************************************#
 
 @njit(cache=True)
-def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
-                  C2, D, u, ccwerrboundB, ccwerrboundC, resulterrbound):
+def orient2dadapt(
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, global_arr,
+        ccwerrboundB, ccwerrboundC, resulterrbound):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1024,6 +1025,12 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
     len(D) = 16
     len(u) = 4
     '''
+
+    B = global_arr[0:4]
+    C1 = global_arr[4:12]
+    C2 = global_arr[12:24]
+    D = global_arr[24:40]
+    u = global_arr[40:44]
 
     bcx = pb_x - pc_x
     acx = pa_x - pc_x
@@ -1076,9 +1083,9 @@ def orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, B, C1,
 
 
 @njit(cache=True)
-def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
-             ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
-             detsum):
+def orient2d(
+    pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, global_arr, ccwerrboundA,
+    ccwerrboundB, ccwerrboundC, resulterrbound, det, detsum):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1091,9 +1098,9 @@ def orient2d(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, B, C1, C2, D, u,
     if np.abs(det) >= errbound:
         return det
 
-    return orient2dadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter,
-                         B, C1, C2, D, u, ccwerrboundB, ccwerrboundC,
-                         resulterrbound)
+    return orient2dadapt(
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, global_arr,
+        ccwerrboundB, ccwerrboundC, resulterrbound)
 
 
 #*****************************************************************************#
@@ -1619,17 +1626,9 @@ def orient3d(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
 #*****************************************************************************#
 
 @njit(cache=True)
-def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
-                  bc, ca, ab, axbc, axxbc, aybc, ayybc, adet, bxca, bxxca,
-                  byca, byyca, bdet, cxab, cxxab, cyab, cyyab, cdet, abdet,
-                  fin1, fin2, aa, bb, cc, u, v, temp8, temp16a, temp16b,
-                  temp16c, temp32a, temp32b, temp48, temp64, axtbb, axtcc,
-                  aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb,
-                  cytaa, cytbb, axtbc, aytbc, bxtca, bytca, cxtab, cytab,
-                  axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
-                  aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat,
-                  abtt, bctt, catt, splitter, iccerrboundB, iccerrboundC,
-                  resulterrbound):
+def incircleadapt(
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, global_arr,
+        splitter, iccerrboundB, iccerrboundC, resulterrbound):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -1702,6 +1701,77 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
     len(bctt) = 4
     len(catt) = 4
     '''
+
+    u = global_arr[40:44]
+    v = global_arr[44:48]
+    bc = global_arr[48:52]
+    ca = global_arr[52:56]
+    ab = global_arr[56:60]
+    axbc = global_arr[60:68]
+    axxbc = global_arr[68:84]
+    aybc = global_arr[84:92]
+    ayybc = global_arr[92:108]
+    adet = global_arr[108:140]
+    bxca = global_arr[140:148]
+    bxxca = global_arr[148:164]
+    byca = global_arr[164:172]
+    byyca = global_arr[172:188]
+    bdet = global_arr[188:220]
+    cxab = global_arr[220:228]
+    cxxab = global_arr[228:244]
+    cyab = global_arr[244:252]
+    cyyab = global_arr[252:268]
+    cdet = global_arr[268:300]
+    abdet = global_arr[300:364]
+    fin1 = global_arr[364:1516]
+    fin2 = global_arr[1516:2668]
+    aa = global_arr[2668:2672]
+    bb = global_arr[2672:2676]
+    cc = global_arr[2676:2680]
+    temp8 = global_arr[2680:2688]
+    temp16a = global_arr[2688:2704]
+    temp16b = global_arr[2704:2720]
+    temp16c = global_arr[2720:2736]
+    temp32a = global_arr[2736:2768]
+    temp32b = global_arr[2768:2800]
+    temp48 = global_arr[2800:2848]
+    temp64 = global_arr[2848:2912]
+    axtbb = global_arr[2912:2920]
+    axtcc = global_arr[2920:2928]
+    aytbb = global_arr[2928:2936]
+    aytcc = global_arr[2936:2944]
+    bxtaa = global_arr[2944:2952]
+    bxtcc = global_arr[2952:2960]
+    bytaa = global_arr[2960:2968]
+    bytcc = global_arr[2968:2976]
+    cxtaa = global_arr[2976:2984]
+    cxtbb = global_arr[2984:2992]
+    cytaa = global_arr[2992:3000]
+    cytbb = global_arr[3000:3008]
+    axtbc = global_arr[3008:3016]
+    aytbc = global_arr[3016:3024]
+    bxtca = global_arr[3024:3032]
+    bytca = global_arr[3032:3040]
+    cxtab = global_arr[3040:3048]
+    cytab = global_arr[3048:3056]
+    axtbct = global_arr[3056:3072]
+    aytbct = global_arr[3072:3088]
+    bxtcat = global_arr[3088:3104]
+    bytcat = global_arr[3104:3120]
+    cxtabt = global_arr[3120:3136]
+    cytabt = global_arr[3136:3152]
+    axtbctt = global_arr[3152:3160]
+    aytbctt = global_arr[3160:3168]
+    bxtcatt = global_arr[3168:3176]
+    bytcatt = global_arr[3176:3184]
+    cxtabtt = global_arr[3184:3192]
+    cytabtt = global_arr[3192:3200]
+    abt = global_arr[3200:3208]
+    bct = global_arr[3208:3216]
+    cat = global_arr[3216:3224]
+    abtt = global_arr[3224:3228]
+    bctt = global_arr[3228:3232]
+    catt = global_arr[3232:3236]
 
     adx = pa_x - pd_x
     bdx = pb_x - pd_x
@@ -2309,16 +2379,10 @@ def incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent,
 
 
 @njit(cache=True)
-def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
-             axxbc, aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet, cxab,
-             cxxab, cyab, cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, u, v,
-             temp8, temp16a, temp16b, temp16c, temp32a, temp32b, temp48,
-             temp64, axtbb, axtcc, aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc,
-             cxtaa, cxtbb, cytaa, cytbb, axtbc, aytbc, bxtca, bytca, cxtab,
-             cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
-             aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat, abtt,
-             bctt, catt, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
-             resulterrbound, det, permanent):
+def incircle(
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, global_arr, splitter,
+        iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound, det,
+        permanent):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2396,18 +2460,9 @@ def incircle(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, bc, ca, ab, axbc,
     if np.abs(det) > errbound:
         return det
 
-    return incircleadapt(pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y,
-                         permanent, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet,
-                         bxca, bxxca, byca, byyca, bdet, cxab, cxxab, cyab,
-                         cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, u, v,
-                         temp8, temp16a, temp16b, temp16c, temp32a, temp32b,
-                         temp48, temp64, axtbb, axtcc, aytbb, aytcc, bxtaa,
-                         bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb,
-                         axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct,
-                         aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
-                         aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct,
-                         cat, abtt, bctt, catt, splitter, iccerrboundB,
-                         iccerrboundC, resulterrbound)
+    return incircleadapt(
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, global_arr,
+        splitter, iccerrboundB, iccerrboundC, resulterrbound)
 
 
 #*****************************************************************************#

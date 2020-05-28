@@ -1,8 +1,8 @@
 import numpy as np
 import tools.BRIO_2D_multidimarr as BRIO
 from tools.adaptive_predicates import incircle, orient2d, exactinit2d
-# import BTP.tools.BRIO_2D_multidimarr as BRIO
-# from BTP.experimental.adjusted_predicates.TwoD.tools.adaptive_predicates import incircle, orient2d, exactinit2d
+# import BTP.experimental.pass_garray_to_predicates.tools.BRIO_2D_multidimarr as BRIO
+# from BTP.experimental.pass_garray_to_predicates.tools.adaptive_predicates import incircle, orient2d, exactinit2d
 import time
 
 
@@ -13,9 +13,9 @@ from numba import njit
 
 @njit(cache=True)
 def _walk(
-        point_id, t_index, vertices_ID, neighbour_ID, points, gv, splitter, B,
-        C1, C2, D, u, ccwerrboundA, ccwerrboundB, ccwerrboundC,
-        resulterrbound, static_filter_o2d):
+        point_id, t_index, vertices_ID, neighbour_ID, points, gv, splitter,
+        global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
+        static_filter_o2d):
     '''
     Walks from the given tri (t_index) to the tri enclosing the given point.
 
@@ -63,9 +63,9 @@ def _walk(
         if np.abs(det) < static_filter_o2d:
             detsum = np.abs(det_left) + np.abs(det_right)
             det = orient2d(
-                point_x, point_y, c_x, c_y, b_x, b_y, splitter, B, C1, C2, D,
-                u, ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
-                det, detsum)
+                point_x, point_y, c_x, c_y, b_x, b_y, splitter, global_arr,
+                ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
+                detsum)
         if det > 0:
             t_op_index_in_t = 0
         else:
@@ -75,9 +75,9 @@ def _walk(
             if np.abs(det) < static_filter_o2d:
                 detsum = np.abs(det_left) + np.abs(det_right)
                 det = orient2d(
-                    point_x, point_y, a_x, a_y, c_x, c_y, splitter, B, C1, C2,
-                    D, u, ccwerrboundA, ccwerrboundB, ccwerrboundC,
-                    resulterrbound, det, detsum)
+                    point_x, point_y, a_x, a_y, c_x, c_y, splitter, global_arr,
+                    ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
+                    det, detsum)
             if det > 0:
                 t_op_index_in_t = 1
             else:
@@ -87,8 +87,8 @@ def _walk(
                 if np.abs(det) < static_filter_o2d:
                     detsum = np.abs(det_left) + np.abs(det_right)
                     det = orient2d(
-                        point_x, point_y, b_x, b_y, a_x, a_y, splitter, B, C1,
-                        C2, D, u, ccwerrboundA, ccwerrboundB, ccwerrboundC,
+                        point_x, point_y, b_x, b_y, a_x, a_y, splitter,
+                        global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC,
                         resulterrbound, det, detsum)
                 if det > 0:
                     t_op_index_in_t = 2
@@ -109,14 +109,7 @@ def _walk(
 
 @njit(cache=True)
 def _cavity_helper(
-        point_id, t_index, points, vertices_ID, gv, B, C1, C2, D, u, v, bc, ca,
-        ab, axbc, axxbc, aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet,
-        cxab, cxxab, cyab, cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, temp8,
-        temp16a, temp16b, temp16c, temp32a, temp32b, temp48, temp64, axtbb,
-        axtcc, aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa,
-        cytbb, axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct, aytbct,
-        bxtcat, bytcat, cxtabt, cytabt, axtbctt, aytbctt, bxtcatt, bytcatt,
-        cxtabtt, cytabtt, abt, bct, cat, abtt, bctt, catt, splitter,
+        point_id, t_index, points, vertices_ID, gv, global_arr, splitter,
         iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound, ccwerrboundA,
         ccwerrboundB, ccwerrboundC, static_filter_o2d, static_filter_i2d):
     '''
@@ -158,9 +151,9 @@ def _cavity_helper(
         if np.abs(det) <= static_filter_o2d:
             detsum = np.abs(det_left) + np.abs(det_right)
             det = orient2d(
-                point_x, point_y, b_x, b_y, c_x, c_y, splitter, B, C1, C2, D,
-                u, ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound,
-                det, detsum)
+                point_x, point_y, b_x, b_y, c_x, c_y, splitter, global_arr,
+                ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound, det,
+                detsum)
 
         if det > 0:
             return True
@@ -211,16 +204,9 @@ def _cavity_helper(
                         (np.abs(cdxady) + np.abs(adxcdy)) * blift + \
                         (np.abs(adxbdy) + np.abs(bdxady)) * clift
             det = incircle(
-                a_x, a_y, b_x, b_y, c_x, c_y, point_x, point_y, bc, ca, ab,
-                axbc, axxbc, aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet,
-                cxab, cxxab, cyab, cyyab, cdet, abdet, fin1, fin2, aa, bb, cc,
-                u, v, temp8, temp16a, temp16b, temp16c, temp32a, temp32b,
-                temp48, temp64, axtbb, axtcc, aytbb, aytcc, bxtaa, bxtcc,
-                bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb, axtbc, aytbc, bxtca,
-                bytca, cxtab, cytab, axtbct, aytbct, bxtcat, bytcat, cxtabt,
-                cytabt, axtbctt, aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt,
-                abt, bct, cat, abtt, bctt, catt, splitter, iccerrboundA,
-                iccerrboundB, iccerrboundC, resulterrbound, det, permanent)
+                a_x, a_y, b_x, b_y, c_x, c_y, point_x, point_y, global_arr,
+                splitter, iccerrboundA, iccerrboundB, iccerrboundC,
+                resulterrbound, det, permanent)
 
         if det >= 0.0:
             return True
@@ -231,16 +217,10 @@ def _cavity_helper(
 @njit(cache=True)
 def _identify_cavity(
         points, point_id, t_index, neighbour_ID, vertices_ID, ic_bad_tri,
-        ic_boundary_tri, ic_boundary_vtx, gv, bad_tri_indicator_arr, B, C1, C2,
-        D, u, v, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet, bxca, bxxca, byca,
-        byyca, bdet, cxab, cxxab, cyab, cyyab, cdet, abdet, fin1, fin2, aa, bb,
-        cc, temp8, temp16a, temp16b, temp16c, temp32a, temp32b, temp48, temp64,
-        axtbb, axtcc, aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb,
-        cytaa, cytbb, axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct, aytbct,
-        bxtcat, bytcat, cxtabt, cytabt, axtbctt, aytbctt, bxtcatt, bytcatt,
-        cxtabtt, cytabtt, abt, bct, cat, abtt, bctt, catt, splitter,
-        iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound, ccwerrboundA,
-        ccwerrboundB, ccwerrboundC, static_filter_o2d, static_filter_i2d):
+        ic_boundary_tri, ic_boundary_vtx, gv, bad_tri_indicator_arr,
+        global_arr, splitter, iccerrboundA, iccerrboundB, iccerrboundC,
+        resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC,
+        static_filter_o2d, static_filter_i2d):
     '''
     Identifies all the 'bad' triangles, i.e. the triangles whose circumcircles
     enclose the given point. Returns a list of the indices of the bad triangles
@@ -289,18 +269,10 @@ def _identify_cavity(
                 # i.e. jth_nbr_idx has not been stored in the ic_bad_tri
                 # array yet.
                 inside_tri = _cavity_helper(
-                    point_id, jth_nbr_idx, points, vertices_ID, gv, B, C1, C2,
-                    D, u, v, bc, ca, ab, axbc, axxbc, aybc, ayybc, adet, bxca,
-                    bxxca, byca, byyca, bdet, cxab, cxxab, cyab, cyyab, cdet,
-                    abdet, fin1, fin2, aa, bb, cc, temp8, temp16a, temp16b,
-                    temp16c, temp32a, temp32b, temp48, temp64, axtbb, axtcc,
-                    aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb,
-                    cytaa, cytbb, axtbc, aytbc, bxtca, bytca, cxtab, cytab,
-                    axtbct, aytbct, bxtcat, bytcat, cxtabt, cytabt, axtbctt,
-                    aytbctt, bxtcatt, bytcatt, cxtabtt, cytabtt, abt, bct, cat,
-                    abtt, bctt, catt, splitter, iccerrboundA, iccerrboundB,
-                    iccerrboundC, resulterrbound, ccwerrboundA, ccwerrboundB,
-                    ccwerrboundC, static_filter_o2d, static_filter_i2d)
+                    point_id, jth_nbr_idx, points, vertices_ID, gv, global_arr,
+                    splitter, iccerrboundA, iccerrboundB, iccerrboundC,
+                    resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC,
+                    static_filter_o2d, static_filter_i2d)
                 if inside_tri is True:
                     # i.e. the j'th neighbour is a bad triangle
                     if ic_bad_tri_end >= ic_len_bad_tri:
@@ -445,80 +417,6 @@ def assembly(
     resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, iccerrboundA, \
     iccerrboundB, iccerrboundC, splitter, static_filter_o2d, \
     static_filter_i2d = exactinit2d(points)
-    B = global_arr[0:4]
-    C1 = global_arr[4:12]
-    C2 = global_arr[12:24]
-    D = global_arr[24:40]
-    u = global_arr[40:44]
-    v = global_arr[44:48]
-    bc = global_arr[48:52]
-    ca = global_arr[52:56]
-    ab = global_arr[56:60]
-    axbc = global_arr[60:68]
-    axxbc = global_arr[68:84]
-    aybc = global_arr[84:92]
-    ayybc = global_arr[92:108]
-    adet = global_arr[108:140]
-    bxca = global_arr[140:148]
-    bxxca = global_arr[148:164]
-    byca = global_arr[164:172]
-    byyca = global_arr[172:188]
-    bdet = global_arr[188:220]
-    cxab = global_arr[220:228]
-    cxxab = global_arr[228:244]
-    cyab = global_arr[244:252]
-    cyyab = global_arr[252:268]
-    cdet = global_arr[268:300]
-    abdet = global_arr[300:364]
-    fin1 = global_arr[364:1516]
-    fin2 = global_arr[1516:2668]
-    aa = global_arr[2668:2672]
-    bb = global_arr[2672:2676]
-    cc = global_arr[2676:2680]
-    temp8 = global_arr[2680:2688]
-    temp16a = global_arr[2688:2704]
-    temp16b = global_arr[2704:2720]
-    temp16c = global_arr[2720:2736]
-    temp32a = global_arr[2736:2768]
-    temp32b = global_arr[2768:2800]
-    temp48 = global_arr[2800:2848]
-    temp64 = global_arr[2848:2912]
-    axtbb = global_arr[2912:2920]
-    axtcc = global_arr[2920:2928]
-    aytbb = global_arr[2928:2936]
-    aytcc = global_arr[2936:2944]
-    bxtaa = global_arr[2944:2952]
-    bxtcc = global_arr[2952:2960]
-    bytaa = global_arr[2960:2968]
-    bytcc = global_arr[2968:2976]
-    cxtaa = global_arr[2976:2984]
-    cxtbb = global_arr[2984:2992]
-    cytaa = global_arr[2992:3000]
-    cytbb = global_arr[3000:3008]
-    axtbc = global_arr[3008:3016]
-    aytbc = global_arr[3016:3024]
-    bxtca = global_arr[3024:3032]
-    bytca = global_arr[3032:3040]
-    cxtab = global_arr[3040:3048]
-    cytab = global_arr[3048:3056]
-    axtbct = global_arr[3056:3072]
-    aytbct = global_arr[3072:3088]
-    bxtcat = global_arr[3088:3104]
-    bytcat = global_arr[3104:3120]
-    cxtabt = global_arr[3120:3136]
-    cytabt = global_arr[3136:3152]
-    axtbctt = global_arr[3152:3160]
-    aytbctt = global_arr[3160:3168]
-    bxtcatt = global_arr[3168:3176]
-    bytcatt = global_arr[3176:3184]
-    cxtabtt = global_arr[3184:3192]
-    cytabtt = global_arr[3192:3200]
-    abt = global_arr[3200:3208]
-    bct = global_arr[3208:3216]
-    cat = global_arr[3216:3224]
-    abtt = global_arr[3224:3228]
-    bctt = global_arr[3228:3232]
-    catt = global_arr[3232:3236]
 
     num_tri = initialize(points, vertices_ID, neighbour_ID, insertion_seq)
 
@@ -526,24 +424,16 @@ def assembly(
     for point_id in range(3, gv):
         enclosing_tri = _walk(
             point_id, old_tri, vertices_ID, neighbour_ID, points, gv, splitter,
-            B, C1, C2, D, u, ccwerrboundA, ccwerrboundB, ccwerrboundC, 
+            global_arr, ccwerrboundA, ccwerrboundB, ccwerrboundC, 
             resulterrbound, static_filter_o2d)
 
         ic_bad_tri, ic_bad_tri_end, ic_boundary_tri, ic_boundary_tri_end, \
         ic_boundary_vtx = _identify_cavity(
             points, point_id, enclosing_tri, neighbour_ID, vertices_ID,
             ic_bad_tri, ic_boundary_tri, ic_boundary_vtx, gv,
-            bad_tri_indicator_arr, B, C1, C2, D, u, v, bc, ca, ab, axbc, axxbc,
-            aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet, cxab, cxxab,
-            cyab, cyyab, cdet, abdet, fin1, fin2, aa, bb, cc, temp8, temp16a,
-            temp16b, temp16c, temp32a, temp32b, temp48, temp64, axtbb, axtcc,
-            aytbb, aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa,
-            cytbb, axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct, aytbct,
-            bxtcat, bytcat, cxtabt, cytabt, axtbctt, aytbctt, bxtcatt, bytcatt,
-            cxtabtt, cytabtt, abt, bct, cat, abtt, bctt, catt, splitter,
-            iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound,
-            ccwerrboundA, ccwerrboundB, ccwerrboundC, static_filter_o2d,
-            static_filter_i2d)
+            bad_tri_indicator_arr, global_arr, splitter, iccerrboundA,
+            iccerrboundB, iccerrboundC, resulterrbound, ccwerrboundA,
+            ccwerrboundB, ccwerrboundC, static_filter_o2d, static_filter_i2d)
 
         num_tri, old_tri = _make_Delaunay_ball(
             point_id, ic_bad_tri, ic_bad_tri_end, ic_boundary_tri,
@@ -715,9 +605,24 @@ class Delaunay2D:
         return self.simplices, self.neighbours
 
 
+@njit(cache=True)
+def find_num_tets_per_vtx(
+        num_points, vertices_ID, num_tets_per_vtx):
+    num_tri = vertices_ID.shape[0]
+    for t in range(num_tri):
+        for i in range(3):
+            v = vertices_ID[t, i]
+            num_tets_per_vtx[v] += 1
+
 
 def perf(N):
     import time
+    import matplotlib.pyplot as plt
+    from matplotlib import rc
+    from scipy.stats import mode
+    import matplotlib.patches as mpl_patches
+
+    rc('text', usetex=True)
 
     np.random.seed(seed=10)
 
@@ -744,9 +649,11 @@ def perf(N):
     # points[N:, 0] = np.cos(theta)
     # points[N:, 1] = np.sin(theta)
 
-    np.random.seed(seed=12345)
+    np.random.seed(seed=int(time.time()))
     for i in range(num_runs):
         points = np.random.randn(N, 2)
+        num_tets_per_vtx = np.zeros(shape=N, dtype=np.int64)
+
         start = time.time()
         DT = Delaunay2D(points)
         end = time.time()
@@ -754,8 +661,44 @@ def perf(N):
         start = time.time()
         simplices, nbrs = DT.exportDT()
         end = time.time()
+
+        find_num_tets_per_vtx(N, simplices, num_tets_per_vtx)
+        mean = np.mean(num_tets_per_vtx)
+        max_tets = np.max(num_tets_per_vtx)
+        min_tets = np.min(num_tets_per_vtx)
+
+        mode_tets = mode(num_tets_per_vtx)[0][0]
+        num_bins = max_tets - min_tets
+
         print("RUN {} : {} s.".format(i, time_arr[i]))
-        print("export time : {} s. \n".format(end - start))
+        print("export time : {} s.".format(end - start))
+        print("__stats__")
+        print("mean : {}, mode : {}, max : {}, min : {}\n".format(
+            mean, mode_tets, max_tets, min_tets))
+
+        n, bins, patches = plt.hist(
+            num_tets_per_vtx, num_bins, facecolor='C2', alpha=0.7,
+            edgecolor='k', linewidth=1, align='left')
+        plt.xlim(min_tets-0.5, max_tets+0.5)
+        plt.xticks(np.arange(min_tets, max_tets+1))
+        plt.xlabel(r'Number of triangles per vertex', size=10)
+        plt.ylabel(r'Number of such vertices', size=10)
+        plt.title(r'Histogram of the number of triangles a vertex is a part of', size=15)
+        labels = []
+        labels.append(r"mean : " + str(mean))
+        labels.append(r"mode : " + str(mode_tets))
+        labels.append(r"max : " + str(max_tets))
+        labels.append(r"min : " + str(min_tets))
+        handles = [mpl_patches.Rectangle(
+            (0, 0), 1, 1, fc="white", ec="white", lw=0, alpha=0)] * 4
+        plt.legend(
+            handles, labels, loc='best', fontsize='small',  fancybox=True,
+            framealpha=0.7, handlelength=0, handletextpad=0)
+        plt.tight_layout(True)
+        # plt.show()
+        plt.savefig('run_{}'.format(i), dpi=300, bbox_to_inches='tight')
+        plt.clf()
+        
         del DT
         del points
 
@@ -765,4 +708,4 @@ if __name__ == "__main__":
     import sys
     N = int(sys.argv[1])
     time = perf(N)
-    print("   Time taken to make the triangulation : {} s".format(time))
+    print("   Minimum time taken to make the triangulation : {} s".format(time))
