@@ -33,57 +33,116 @@ class _random_num(Extern):
 random_num = _random_num()
 
 
-class _qargsort(Extern):
+class _qargsort2(Extern):
     def code(self, backend):
         if backend != 'cython':
             raise NotImplementedError('currently only supported on Cython')
         # code = 'cdef extern from "qargsort.c":\n' + \
         #        '    void qargsort (int* points, int* indices, int array_size)'
         
-        code = 'from libc.stdlib cimport rand, srand\n' + \
-               'from libc.time cimport *\n' + \
-               'srand(time(NULL))\n' + \
-               'cdef inline void qargsort (int* points, int* indices, int array_size):\n' + \
-               '    cdef int left, right, pivot_idx, pivot_point, temp\n\n' + \
+        code = 'cdef inline void qargsort2 (int* points, int* indices, int start, int end):\n' + \
+               '    cdef int left, right, pivot_idx, pivot_point, temp, array_size\n' + \
+               '    array_size = end - start\n\n' + \
                '    if array_size == 2:\n' + \
                '        # Recursive base case\n' + \
-               '        if points[indices[0]] > points[indices[1]]:\n' + \
-               '            temp = indices[0]\n' + \
-               '            indices[0] = indices[1]\n' + \
-               '            indices[1] = temp\n' + \
+               '        if points[indices[start]] > points[indices[start + 1]]:\n' + \
+               '            temp = indices[start]\n' + \
+               '            indices[start] = indices[start + 1]\n' + \
+               '            indices[start + 1] = temp\n' + \
                '        return\n\n' + \
-               '    # Choose a random pivot to split the array.\n' + \
-               '    pivot_idx = rand() % array_size\n' + \
-               '    pivot_point = points[indices[pivot_idx]]' + \
+               '    # Choose a pivot to split the array.\n' + \
+               '    pivot_idx = array_size // 2\n' + \
+               '    pivot_point = points[indices[start + pivot_idx]]\n' + \
                '    # Split the array.\n' + \
                '    left = -1\n' + \
                '    right = array_size\n' + \
                '    while left < right:\n' + \
                '        # Search for a point which is too large for the left indices.\n' + \
                '        left += 1\n' + \
-               '        while left <= right and points[indices[left]] < pivot_point:\n' + \
+               '        while left <= right and points[indices[start + left]] < pivot_point:\n' + \
                '            left += 1\n' + \
                '        # Search for a point which is too small for the right indices.\n' + \
                '        right -= 1\n' + \
-               '        while left <= right and points[indices[right]] > pivot_point:\n' + \
+               '        while left <= right and points[indices[start + right]] > pivot_point:\n' + \
                '            right -= 1\n' + \
                '        if left < right:\n' + \
                '            # Swap the left and right indices.\n' + \
-               '            temp = indices[left]\n' + \
-               '            indices[left] = indices[right]\n' + \
-               '            indices[right] = temp\n\n' + \
+               '            temp = indices[start + left]\n' + \
+               '            indices[start + left] = indices[start + right]\n' + \
+               '            indices[start + right] = temp\n\n' + \
                '    if left > 1:\n' + \
                '        # Recursively sort the left subset\n' + \
-               '        qargsort(points, indices, left)\n' + \
+               '        qargsort2(points, indices, start, start + left)\n' + \
                '    if right < array_size - 2:\n' + \
                '        # Recursively sort the right subset.\n' + \
-               '        qargsort(points, &indices[right + 1], array_size - right - 1)\n'
+               '        qargsort2(points, indices, start + right + 1, end)\n'
 
         return code
 
     def __call__(self, *args, **kw):
+        # print('passed')
         pass
-qargsort = _qargsort()
+qargsort2 = _qargsort2()
+
+
+@annotate(seed='intp', int='low, high, return_')
+def prng(seed, low, high):
+    '''
+    seed[0] = seed for this prng
+    '''
+    randomseed = declare('int')
+    randomseed = seed[0]
+    randomseed = (randomseed*1313 + 1414) % 15151515
+    seed[0] = randomseed
+    randomseed = ( randomseed // ( (15151515 // (high - low) ) + 1) ) - low
+    return randomseed
+
+
+@annotate(intp='points, indices', int='start, end')
+def qargsort(points, indices, start, end):
+    left, right, pivot_idx, pivot_point, temp, array_size = declare('int', 6)
+    array_size = end - start
+
+    if array_size == 2:
+        # Recursive base case
+        if points[indices[start]] > points[indices[start + 1]]:
+            temp = indices[start]
+            indices[start] = indices[start + 1]
+            indices[start + 1] = temp
+        return
+
+    # Choose a pivot to split the array
+    pivot_idx = array_size // 2
+    pivot_point = points[indices[start + pivot_idx]]
+
+    # Split the array
+    left = -1
+    right = array_size
+    while left < right:
+        # Search for a point that is too large for the left indices
+        left += 1
+        while left <= right and points[indices[start + left]] < pivot_point:
+            left += 1
+
+        # Search for a point that is too small for the right indices
+        right -= 1
+        while left <= right and points[indices[start + right]] > pivot_point:
+            right -= 1
+
+        if left < right:
+            # Swap left and right indices
+            temp = indices[start + left]
+            indices[start + left] = indices[start + right]
+            indices[start + right] = temp
+
+    if left > 1:
+        # Recursively sort the left subset
+        qargsort(points, indices, start, start + left)
+    if right < array_size - 2:
+        # Recursively sort the right subset
+        qargsort(points, indices, start + right + 1, end)
+    return
+# qargsort = Cython(qargsort)
 
 
 @annotate(x='double', return_='int')
@@ -129,11 +188,14 @@ def _make_rounds(
 
     round_idx = declare('int')
     i, rnum = declare('int', 2)
+    seed = declare('matrix(1, "int")')
+    seed[0] = 0
     for round_idx in range(1, num_rounds):
         points_left_new_end = 0
 
         for i in range(points_left_old_end):
-            rnum = random_num(2)
+            # rnum = random_num(2)
+            rnum = prng(seed, 0, 2)
             if rnum == 1:
                 rounds[rounds_insertion_idx] = points_left_old[i]
                 rounds_insertion_idx -= 1
@@ -279,8 +341,8 @@ def _sort_along_hilbert_curve(
         h_indices[i] = hilbert_arr[a*x_ + y_]
         new_indices[i] = i
 
-    if org_points_end >= 2:
-        qargsort(h_indices, new_indices, org_points_end)
+    if org_points_end > 1:
+        qargsort(h_indices, new_indices, 0, org_points_end)
 
     return
 
@@ -381,7 +443,37 @@ def perf(N):
     print("minimum time taken : {} s".format(running_time))
 
 
+@annotate(intp='points, indices', num_points='int')
+def _check_quicksort(points, indices, num_points):
+    start = declare('int')
+    start = 0
+    qargsort2(points, indices, start, num_points)
+    return
+check_quicksort = Cython(_check_quicksort)
+
+
+@annotate(int='num, return_')
+def _do_nothing(num):
+    if num == 0:
+        return 0
+    else:
+        num = _do_nothing(num - 1)
+    return num
+do_nothing = Cython(_do_nothing)
+
+
 if __name__ == "__main__":
     import sys
     N = int(sys.argv[1])
     perf(N)
+    # points = np.arange(10, dtype=np.int32)
+    # np.random.shuffle(points)
+    # indices = np.arange(10, dtype=np.int32)
+    # num_points = np.int32(10)
+    # print('                 points : {}'.format(points))
+    # print('                indices : {}'.format(indices))
+    # check_quicksort(points, indices, num_points)
+    # print('indices of sorted array : {}'.format(indices))
+    # print('          sorted points : {}'.format(points[indices]))
+    # a = do_nothing(np.int32(10))
+    # print(a)

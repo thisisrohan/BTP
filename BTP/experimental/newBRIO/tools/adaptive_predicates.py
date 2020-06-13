@@ -1,50 +1,40 @@
 import numpy as np
-from math import *
-from compyle.types import annotate, int_, KnownType, declare
-from compyle.low_level import Cython
-from compyle.extern import Extern
 
 def njit(f):
     return f
 from numba import njit
 
 
-_bool = KnownType('bint')
-
-
-@annotate(double='a, b, x, return_')
+@njit(cache=True)
 def Fast_Two_Sum_Tail(a, b, x):
-    bvirt, y = declare('double', 2)
     bvirt = x - a
     y = b - bvirt
     return y
 
 
-@annotate(double='a, b', return_arr='doublep')
-def Fast_Two_Sum(a, b, return_arr):
-    return_arr[1] = a + b
-    return_arr[0] = Fast_Two_Sum_Tail(a, b, return_arr[1])
-    return
+@njit(cache=True)
+def Fast_Two_Sum(a, b):
+    x = a + b
+    y = Fast_Two_Sum_Tail(a, b, x)
+    return x, y
 
 
-@annotate(double='a, b, x, return_')
+@njit(cache=True)
 def Fast_Two_Diff_Tail(a, b, x):
-    bvirt, y = declare('double', 2)
     bvirt = a - x
     y = bvirt - b
     return y
 
 
-@annotate(double='a, b', return_arr='doublep')
-def Fast_Two_Diff(a, b, return_arr):
-    return_arr[1] = a - b
-    return_arr[0] = Fast_Two_Diff_Tail(a, b, return_arr[1])
-    return
+@njit(cache=True)
+def Fast_Two_Diff(a, b):
+    x = a - b
+    y = Fast_Two_Diff_Tail(a, b, x)
+    return x, y
 
 
-@annotate(double='a, b, x, return_')
+@njit(cache=True)
 def Two_Sum_Tail(a, b, x):
-    bvirt, avirt, bround, around, y = declare('double', 5)
     bvirt = x - a
     avirt = x - bvirt
     bround = b - bvirt
@@ -53,16 +43,15 @@ def Two_Sum_Tail(a, b, x):
     return y
 
 
-@annotate(double='a, b', return_arr='doublep')
-def Two_Sum(a, b, return_arr):
-    return_arr[1] = a + b
-    return_arr[0] = Two_Sum_Tail(a, b, return_arr[1])
-    return
+@njit(cache=True)
+def Two_Sum(a, b):
+    x = a + b
+    y = Two_Sum_Tail(a, b, x)
+    return x, y
 
 
-@annotate(double='a, b, x, return_')
+@njit(cache=True)
 def Two_Diff_Tail(a, b, x):
-    bvirt, avirt, bround, around, y = declare('double', 5)
     bvirt = a - x
     avirt = x + bvirt
     bround = bvirt - b
@@ -71,33 +60,26 @@ def Two_Diff_Tail(a, b, x):
     return y
 
 
-@annotate(double='a, b', return_arr='doublep')
-def Two_Diff(a, b, return_arr):
-    return_arr[1] = a - b
-    return_arr[0] = Two_Diff_Tail(a, b, return_arr[1])
-    return
+@njit(cache=True)
+def Two_Diff(a, b):
+    x = a - b
+    y = Two_Diff_Tail(a, b, x)
+    return x, y
 
 
-@annotate(double='a, splitter', return_arr='doublep')
-def Split(a, splitter, return_arr):
-    c, abig = declare('double', 2)
+@njit(cache=True)
+def Split(a, splitter):
     c = splitter * a
     abig = c - a
-    return_arr[1] = c - abig
-    return_arr[0] = a - return_arr[1]
-    return
+    ahi = c - abig
+    alo = a - ahi
+    return ahi, alo
 
 
-@annotate(double='a, b, x, splitter, return_')
+@njit(cache=True)
 def Two_Product_Tail(a, b, x, splitter):
-    ahi, alo, bhi, blo, err1, err2, err3, y = declare('double', 8)
-    return_arr = declare('matrix(2, "double")')
-    Split(a, splitter, return_arr)
-    ahi = return_arr[1]
-    alo = return_arr[0]
-    Split(b, splitter, return_arr)
-    bhi = return_arr[1]
-    blo = return_arr[0]
+    ahi, alo = Split(a, splitter)
+    bhi, blo = Split(b, splitter)
     err1 = x - (ahi * bhi)
     err2 = err1 - (alo * bhi)
     err3 = err2 - (ahi * blo)
@@ -105,436 +87,206 @@ def Two_Product_Tail(a, b, x, splitter):
     return y
 
 
-@annotate(double='a, b, splitter', return_arr='doublep')
-def Two_Product(a, b, splitter, return_arr):
-    return_arr[1] = a * b
-    return_arr[0] = Two_Product_Tail(a, b, return_arr[1], splitter)
-    return
+@njit(cache=True)
+def Two_Product(a, b, splitter):
+    x = a * b
+    y = Two_Product_Tail(a, b, x, splitter)
+    return x, y
 
 
 # Two_Product_Presplit() is Two_Product() where one of the inputs has already 
 # been split. Avoids redundant splitting.
 
-@annotate(double='a, b, bhi, blo, splitter', return_arr='doublep')
-def Two_Product_Presplit(a, b, bhi, blo, splitter, return_arr):
-    x, y, ahi, alo, err1, err2, err3 = declare('double', 7)
+@njit(cache=True)
+def Two_Product_Presplit(a, b, bhi, blo, splitter):
     x = a * b
-    Split(a, splitter, return_arr)
-    ahi = return_arr[1]
-    alo = return_arr[0]
+    ahi, alo = Split(a, splitter)
     err1 = x - (ahi * bhi)
     err2 = err1 - (alo * bhi)
     err3 = err2 - (ahi * blo)
     y = (alo * blo) - err3
-    return_arr[1] = x
-    return_arr[0] = y
-    return
+    return x, y
 
 
 # Two_Product_2Presplit() is Two_Product() where both of the inputs have
 # already been split. Avoids redundant splitting.
 
-@annotate(double='a, ahi, alo, b, bhi, blo', return_arr='doublep')
+@njit(cache=True)
 def Two_Product_2Presplit(a, ahi, alo, b, bhi, blo):
-    x, y, err1, err2, err3 = declare('double', 5)
     x = a * b
     err1 = x - (ahi * bhi)
     err2 = err1 - (alo * bhi)
     err3 = err2 - (ahi * blo)
     y = (alo * blo) - err3
-    return_arr[1] = x
-    return_arr[0] = y
-    return
+    return x, y
 
 
 # Square() can be done more quickly than Two_Product().
 
-@annotate(double='a, x, splitter, return_')
+@njit(cache=True)
 def Square_Tail(a, x, splitter):
-    ahi, alo, err1, err3, y = declare('double', 5)
-    return_arr = declare('matrix(2, "double")')
-    Split(a, splitter, return_arr)
-    ahi = return_arr[1]
-    alo = return_arr[0]
+    ahi, alo = Split(a, splitter)
     err1 = x - (ahi * ahi)
     err3 = err1 - ((ahi + ahi) * alo)
     y = (alo * alo) - err3
     return y
 
 
-@annotate(double='a, splitter', return_arr='doublep')
-def Square(a, splitter, return_arr):
-    return_arr[1] = a * a
-    return_arr[0] = Square_Tail(a, return_arr[1], splitter)
-    return
+@njit(cache=True)
+def Square(a, splitter):
+    x = a * a
+    y = Square_Tail(a, x, splitter)
+    return x, y
 
 
 # Functions for summing expansions of various fixed lengths. These are all
 # unrolled versions of Expansion_Sum().
 
-@annotate(double='a1, a0, b', return_arr='doublep')
-def Two_One_Sum(a1, a0, b, return_arr):
-    _i = declare('double')
-    _return_arr = declare('matrix(2, "double")')
-    Two_Sum(a0, b, _return_arr)
-    _i = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Two_Sum(a1, _i, _return_arr)
-    return_arr[2] = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    return
+@njit(cache=True)
+def Two_One_Sum(a1, a0, b):
+    _i, x0 = Two_Sum(a0, b)
+    x2, x1 = Two_Sum(a1, _i)
+    return x2, x1, x0
 
 
-@annotate(double='a1, a0, b', return_arr='doublep')
-def Two_One_Diff(a1, a0, b, return_arr):
-    _i = declare('double')
-    _return_arr = declare('matrix(2, "double")')
-    Two_Diff(a0, b, _return_arr)
-    _i = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Two_Sum(a1, _i, _return_arr)
-    return_arr[2] = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    return
+@njit(cache=True)
+def Two_One_Diff(a1, a0, b):
+    _i, x0 = Two_Diff(a0, b)
+    x2, x1 = Two_Sum(a1, _i)
+    return x2, x1, x0
 
 
-@annotate(double='a1, a0, b1, b0', return_arr='doublep')
-def Two_Two_Sum(a1, a0, b1, b0, return_arr):
-    _j, _0 = declare('double', 2)
-    _return_arr = declare('matrix(3, "double")')
-    Two_One_Sum(a1, a0, b0, _return_arr)
-    _j = _return_arr[2]
-    _0 = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Two_One_Sum(_j, _0, b1, _return_arr)
-    return_arr[3] = _return_arr[2]
-    return_arr[2] = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    return
+@njit(cache=True)
+def Two_Two_Sum(a1, a0, b1, b0):
+    _j, _0, x0 = Two_One_Sum(a1, a0, b0)
+    x3, x2, x1 = Two_One_Sum(_j, _0, b1)
+    return x3, x2, x1, x0
 
 
-@annotate(double='a1, a0, b1, b0', return_arr='doublep')
-def Two_Two_Diff(a1, a0, b1, b0, return_arr):
-    _j, _0 = declare('double', 2)
-    _return_arr = declare('matrix(3, "double")')
-    Two_One_Diff(a1, a0, b0, _return_arr)
-    _j = _return_arr[2]
-    _0 = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Two_One_Diff(_j, _0, b1, _return_arr)
-    return_arr[3] = _return_arr[2]
-    return_arr[2] = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    return
+@njit(cache=True)
+def Two_Two_Diff(a1, a0, b1, b0):
+    _j, _0, x0 = Two_One_Diff(a1, a0, b0)
+    x3, x2, x1 = Two_One_Diff(_j, _0, b1)
+    return x3, x2, x1, x0
 
 
-@annotate(double='a3, a2, a1, a0, b', return_arr='doublep')
-def Four_One_Sum(a3, a2, a1, a0, b, return_arr):
-    _j = declare('double')
-    _return_arr = declare('matrix(3, "double")')
-    Two_One_Sum(a1, a0, b, _return_arr)
-    _j = _return_arr[2]
-    return_arr[1] = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Two_One_Sum(a3, a2, _j, _return_arr)
-    return_arr[4] = _return_arr[2]
-    return_arr[3] = _return_arr[1]
-    return_arr[2] = _return_arr[0]
-    return
+@njit(cache=True)
+def Four_One_Sum(a3, a2, a1, a0, b):
+    _j, x1, x0 = Two_One_Sum(a1, a0, b)
+    x4, x3, x2 = Two_One_Sum(a3, a2, _j)
+    return x4, x3, x2, x1, x0
 
 
-@annotate(double='a3, a2, a1, a0, b1, b0', return_arr='doublep')
-def Four_Two_Sum(a3, a2, a1, a0, b1, b0, return_arr):
-    _k, _2, _1, _0 = declare('double', 4)
-    _return_arr = declare('matrix(5, "double")')
-    Four_One_Sum(a3, a2, a1, a0, b0, _return_arr)
-    _k = _return_arr[4]
-    _2 = _return_arr[3]
-    _1 = _return_arr[2]
-    _0 = _return_arr[1]
-    return_arr[0] = _return_arr[0] 
-    Four_One_Sum(_k, _2, _1, _0, b1, _return_arr)
-    return_arr[5] = _return_arr[4]
-    return_arr[4] = _return_arr[3]
-    return_arr[3] = _return_arr[2]
-    return_arr[2] = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    return
+@njit(cache=True)
+def Four_Two_Sum(a3, a2, a1, a0, b1, b0):
+    _k, _2, _1, _0, x0 = Four_One_Sum(a3, a2, a1, a0, b0)
+    x5, x4, x3, x2, x1 = Four_One_Sum(_k, _2, _1, _0, b1)
+    return x5, x4, x3, x2, x1, x0
 
 
-@annotate(doublep='a3, a2, a1, a0, b4, b3, b1, b0', return_arr='doublep')
-def Four_Four_Sum(a3, a2, a1, a0, b4, b3, b1, b0, return_arr):
-    _l, _2, _1, _0 = declare('double', 4)
-    _return_arr = declare('matrix(6, "double")')
-    Four_Two_Sum(a3, a2, a1, a0, b1, b0, _return_arr)
-    _l = _return_arr[5]
-    _2 = _return_arr[4]
-    _1 = _return_arr[3]
-    _0 = _return_arr[2]
-    return_arr[1] = _return_arr[1]
-    return_arr[0] = _return_arr[0] 
-    Four_Two_Sum(_l, _2, _1, _0, b4, b3, _return_arr)
-    return_arr[7] = _return_arr[5]
-    return_arr[6] = _return_arr[4]
-    return_arr[5] = _return_arr[3]
-    return_arr[4] = _return_arr[2]
-    return_arr[3] = _return_arr[1]
-    return_arr[2] = _return_arr[0]
-    return
+@njit(cache=True)
+def Four_Four_Sum(a3, a2, a1, a0, b4, b3, b1, b0):
+    _l, _2, _1, _0, x1, x0 = Four_Two_Sum(a3, a2, a1, a0, b1, b0)
+    x7, x6, x5, x4, x3, x2 = Four_Two_Sum(_l, _2, _1, _0, b4, b3)
+    return x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@annotate(double='a7, a6, a5, a4, a3, a2, a1, a0, b', return_arr='doublep')
-def Eight_One_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b, return_arr):
-    _j = declare('double')
-    _return_arr = declare('matrix(5, "double")')
-    Four_One_Sum(a3, a2, a1, a0, b, _return_arr)
-    _j = _return_arr[4]
-    return_arr[3] = _return_arr[3]
-    return_arr[2] = _return_arr[2]
-    return_arr[1] = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Four_One_Sum(a7, a6, a5, a4, _j, _return_arr)
-    return_arr[8] = _return_arr[4]
-    return_arr[7] = _return_arr[3]
-    return_arr[6] = _return_arr[2]
-    return_arr[5] = _return_arr[1]
-    return_arr[4] = _return_arr[0]
-    return
+@njit(cache=True)
+def Eight_One_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b):
+    _j, x3, x2, x1, x0 = Four_One_Sum(a3, a2, a1, a0, b)
+    x8, x7, x6, x5, x4 = Four_One_Sum(a7, a6, a5, a4, _j)
+    return x8, x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@annotate(
-    double='a7, a6, a5, a4, a3, a2, a1, a0, b1, b0', return_arr='doublep')
-def Eight_Two_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b1, b0, return_arr):
-    _k, _6, _5, _4, _3, _2, _1, _0 = declare('double', 8)
-    _return_arr = declare('matrix(9, "double")')
-    Eight_One_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b0, _return_arr)
-    _k = _return_arr[8]
-    _6 = _return_arr[7]
-    _5 = _return_arr[6]
-    _4 = _return_arr[5]
-    _3 = _return_arr[4]
-    _2 = _return_arr[3]
-    _1 = _return_arr[2]
-    _0 = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Eight_One_Sum(_k, _6, _5, _4, _3, _2, _1, _0, b1, _return_arr)
-    return_arr[9] = _return_arr[8]
-    return_arr[8] = _return_arr[7]
-    return_arr[7] = _return_arr[6]
-    return_arr[6] = _return_arr[5]
-    return_arr[5] = _return_arr[4]
-    return_arr[4] = _return_arr[3]
-    return_arr[3] = _return_arr[2]
-    return_arr[2] = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    return
+@njit(cache=True)
+def Eight_Two_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b1, b0):
+    _k, _6, _5, _4, _3, _2, _1, _0, x0 = Eight_One_Sum(a7, a6, a5, a4, a3,
+                                                       a2, a1, a0, b0)
+    x9, x8, x7, x6, x5, x4, x3, x2, x1 = Eight_One_Sum(_k, _6, _5, _4, _3,
+                                                       _2, _1, _0, b1)
+    return x9, x8, x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@annotate(
-    double='a7, a6, a5, a4, a3, a2, a1, a0, b4, b3, b1, b0',
-    return_arr='doublep')
-def Eight_Four_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b4, b3, b1, b0, return_arr):
-    _l, _6, _5, _4, _3, _2, _1, _0 = declare('double', 8)
-    _return_arr = declare('matrix(10, "double")')
-    Eight_Two_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b1, b0, _return_arr)
-    _l = _return_arr[9]
-    _6 = _return_arr[8]
-    _5 = _return_arr[7]
-    _4 = _return_arr[6]
-    _3 = _return_arr[5]
-    _2 = _return_arr[4]
-    _1 = _return_arr[3]
-    _0 = _return_arr[2]
-    return_arr[1] = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Eight_Two_Sum(_l, _6, _5, _4, _3, _2, _1, _0, b4, b3, _return_arr)
-    return_arr[11] = _return_arr[9]
-    return_arr[10] = _return_arr[8]
-    return_arr[9] = _return_arr[7]
-    return_arr[8] = _return_arr[6]
-    return_arr[7] = _return_arr[5]
-    return_arr[6] = _return_arr[4]
-    return_arr[5] = _return_arr[3]
-    return_arr[4] = _return_arr[2]
-    return_arr[3] = _return_arr[1]
-    return_arr[2] = _return_arr[0]
-    return
+@njit(cache=True)
+def Eight_Four_Sum(a7, a6, a5, a4, a3, a2, a1, a0, b4, b3, b1, b0):
+    _l, _6, _5, _4, _3, _2, _1, _0, x1, x0 = Eight_Two_Sum(a7, a6, a5, a4, a3,
+                                                           a2, a1, a0, b1, b0)
+    x11, x10, x9, x8, x7, x6, x5, x4, x3, x2 = Eight_Two_Sum(_l, _6, _5, _4,
+                                                             _3, _2, _1, _0,
+                                                             b4, b3)
+    return x11, x10, x9, x8, x7, x6, x5, x4, x3, x2, x1, x0
 
 
 # Functions for multiplying expansions of various fixed lengths.
 
-@annotate(double='a1, a0, b, splitter', return_arr='doublep')
-def Two_One_Product(a1, a0, b, splitter, return_arr):
-    bhi, blo, _i, _j, _0 = declare('double', 5)
-    _return_arr = declare('matrix(2, "double")')
-    Split(b, splitter, _return_arr)
-    bhi = _return_arr[1]
-    blo = _return_arr[0]
-    Two_Product_Presplit(a0, b, bhi, blo, splitter, _return_arr)
-    _i = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Two_Product_Presplit(a1, b, bhi, blo, splitter, _return_arr)
-    _j = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_i, _0, _return_arr)
-    _k = _return_arr[1]
-    return_arr[1] = _return_arr[0] 
-    Fast_Two_Sum(_j, _k, _return_arr)
-    return_arr[3] = _return_arr[1]
-    return_arr[2] = _return_arr[0]
-    return
+@njit(cache=True)
+def Two_One_Product(a1, a0, b, splitter):
+    bhi, blo = Split(b, splitter)
+    _i, x0 = Two_Product_Presplit(a0, b, bhi, blo, splitter)
+    _j, _0 = Two_Product_Presplit(a1, b, bhi, blo, splitter)
+    _k, x1 = Two_Sum(_i, _0)
+    x3, x2 = Fast_Two_Sum(_j, _k)
+    return x3, x2, x1, x0
 
 
-@annotate(double='a3, a2, a1, a0, b, splitter', return_arr='doublep')
-def Four_One_Product(a3, a2, a1, a0, b, splitter, return_arr):
-    bhi, blo, _i, _j, _k = declare('double', 5)
-    _return_arr = declare('matrix(2, "double")')
-    Split(b, splitter, _return_arr)
-    bhi = _return_arr[1]
-    blo = _return_arr[0]
-    Two_Product_Presplit(a0, b, bhi, blo, splitter, _return_arr)
-    _i = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Two_Product_Presplit(a1, b, bhi, blo, splitter, _return_arr)
-    _j = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_i, _0, _return_arr)
-    _k = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    Fast_Two_Sum(_j, _k, _return_arr)
-    _i = _return_arr[1]
-    return_arr[2] = _return_arr[0]
-    Two_Product_Presplit(a2, b, bhi, blo, splitter, _return_arr)
-    _j = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_i, _0, _return_arr)
-    _k = _return_arr[1]
-    return_arr[3] = _return_arr[0]
-    Fast_Two_Sum(_j, _k, _return_arr)
-    _i = _return_arr[1]
-    return_arr[4] = _return_arr[0]
-    Two_Product_Presplit(a3, b, bhi, blo, splitter, _return_arr)
-    _j = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_i, _0, _return_arr)
-    _k = _return_arr[1]
-    return_arr[5] = _return_arr[0]
-    Fast_Two_Sum(_j, _k, _return_arr)
-    return_arr[7] = _return_arr[1]
-    return_arr[6] = _return_arr[0]
-    return
+@njit(cache=True)
+def Four_One_Product(a3, a2, a1, a0, b, splitter):
+    bhi, blo = Split(b, splitter)
+    _i, x0 = Two_Product_Presplit(a0, b, bhi, blo, splitter)
+    _j, _0 = Two_Product_Presplit(a1, b, bhi, blo, splitter)
+    _k, x1 = Two_Sum(_i, _0)
+    _i, x2 = Fast_Two_Sum(_j, _k)
+    _j, _0 = Two_Product_Presplit(a2, b, bhi, blo, splitter)
+    _k, x3 = Two_Sum(_i, _0)
+    _i, x4 = Fast_Two_Sum(_j, _k)
+    _j, _0 = Two_Product_Presplit(a3, b, bhi, blo, splitter)
+    _k, x5 = Two_Sum(_i, _0)
+    x7, x6 = Fast_Two_Sum(_j, _k)
+    return x7, x6, x5, x4, x3, x2, x1, x0
 
 
-@annotate(double='a1, a0, b1, b0, splitter', return_arr='doublep')
-def Two_Two_Product(a1, a0, b1, b0, splitter, return_arr):
-    a0hi, a0lo, bhi, blo, a1hi, a1lo, bhi, blo = declare('double', 8)
-    _0, _1, _2, _i, _j, _k, _l, _m, _n = declare('double', 9)
-    _return_arr = declare('matrix(2, "double")')
-
-    Split(a0, splitter, _return_arr)
-    a0hi = _return_arr[1]
-    a0lo = _return_arr[0]
-    Split(b0, splitter, _return_arr)
-    bhi = _return_arr[1]
-    blo = _return_arr[0]
-    Two_Product_2Presplit(a0, a0hi, a0lo, b0, bhi, blo, _return_arr)
-    _i = _return_arr[1]
-    return_arr[0] = _return_arr[0]
-    Split(a1, splitter, _return_arr)
-    a1hi = _return_arr[1]
-    a1lo = _return_arr[0]
-    Two_Product_2Presplit(a1, a1hi, a1lo, b0, bhi, blo, _return_arr)
-    _j = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_i, _0, _return_arr)
-    _k = _return_arr[1]
-    _1 = _return_arr[0]
-    Fast_Two_Sum(_j, _k, _return_arr)
-    _l = _return_arr[1]
-    _2 = _return_arr[0]
-    Split(b1, splitter, _return_arr)
-    bhi = _return_arr[1]
-    blo = _return_arr[0]
-    Two_Product_2Presplit(a0, a0hi, a0lo, b1, bhi, blo, _return_arr)
-    _i = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_1, _0, _return_arr)
-    _k = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    Two_Sum(_2, _k, _return_arr)
-    _j = _return_arr[1]
-    _1 = _return_arr[0]
-    Two_Sum(_l, _j, _return_arr)
-    _m = _return_arr[1]
-    _2 = _return_arr[0]
-    Two_Product_2Presplit(a1, a1hi, a1lo, b1, bhi, blo, _return_arr)
-    _j = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_i, _0, _return_arr)
-    _n = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_1, _0, _return_arr)
-    _i = _return_arr[1]
-    return_arr[2] = _return_arr[0]
-    Two_Sum(_2, _i, _return_arr)
-    _k = _return_arr[1]
-    _1 = _return_arr[0]
-    Two_Sum(_m, _k, _return_arr)
-    _l = _return_arr[1]
-    _2 = _return_arr[0]
-    Two_Sum(_j, _n, _return_arr)
-    _k = _return_arr[1]
-    _0 = _return_arr[0]
-    Two_Sum(_1, _0, _return_arr)
-    _j = _return_arr[1]
-    return_arr[3] = _return_arr[0]
-    Two_Sum(_2, _j, _return_arr)
-    _i = _return_arr[1]
-    _1 = _return_arr[0]
-    Two_Sum(_l, _i, _return_arr)
-    _m = _return_arr[1]
-    _2 = _return_arr[0]
-    Two_Sum(_1, _k, _return_arr)
-    _i = _return_arr[1]
-    return_arr[4] = _return_arr[0]
-    Two_Sum(_2, _i, _return_arr)
-    _k = _return_arr[1]
-    return_arr[5] = _return_arr[0]
-    Two_Sum(_m, _k, _return_arr)
-    return_arr[7] = _return_arr[1]
-    return_arr[6] = _return_arr[0]
-    return
+@njit(cache=True)
+def Two_Two_Product(a1, a0, b1, b0, splitter):
+    a0hi, a0lo = Split(a0, splitter)
+    bhi, blo = Split(b0, splitter)
+    _i, x0 = Two_Product_2Presplit(a0, a0hi, a0lo, b0, bhi, blo)
+    a1hi, a1lo = Split(a1, splitter)
+    _j, _0 = Two_Product_2Presplit(a1, a1hi, a1lo, b0, bhi, blo)
+    _k, _1 = Two_Sum(_i, _0)
+    _l, _2 = Fast_Two_Sum(_j, _k)
+    bhi, blo = Split(b1, splitter)
+    _i, _0 = Two_Product_2Presplit(a0, a0hi, a0lo, b1, bhi, blo)
+    _k, x1 = Two_Sum(_1, _0)
+    _j, _1 = Two_Sum(_2, _k)
+    _m, _2 = Two_Sum(_l, _j)
+    _j, _0 = Two_Product_2Presplit(a1, a1hi, a1lo, b1, bhi, blo)
+    _n, _0 = Two_Sum(_i, _0)
+    _i, x2 = Two_Sum(_1, _0)
+    _k, _1 = Two_Sum(_2, _i)
+    _l, _2 = Two_Sum(_m, _k)
+    _k, _0 = Two_Sum(_j, _n)
+    _j, x3 = Two_Sum(_1, _0)
+    _i, _1 = Two_Sum(_2, _j)
+    _m, _2 = Two_Sum(_l, _i)
+    _i, x4 = Two_Sum(_1, _k)
+    _k, x5 = Two_Sum(_2, _i)
+    x7, x6 = Two_Sum(_m, _k)
+    return x7, x6, x5, x4, x3, x2, x1, x0
 
 
 # An expansion of length two can be squared more quickly than finding the
 # product of two different expansions of length two, and the result is
 # guaranteed to have no more than six (rather than eight) components.
 
-@annotate(double='a1, a0, splitter', return_arr='doublep')
-def Two_Square(a1, a0, splitter, return_arr):
-    _0, _1, _2, _j, _k, _l = declare('double', 6)
-    _return_arr = declare('matrix(4, "double")')
-
-    Square(a0, splitter, _return_arr)
-    _j = _return_arr[1]
-    return_arr[0] = _return_arr[0]
+@njit(cache=True)
+def Two_Square(a1, a0, splitter):
+    _j, x0 = Square(a0, splitter)
     _0 = a0 + a0
-    Two_Product(a1, _0, splitter, _return_arr)
-    _k = _return_arr[1]
-    _1 = _return_arr[0]
-    Two_One_Sum(_k, _1, _j, _return_arr)
-    _l = _return_arr[2]
-    _2 = _return_arr[1]
-    return_arr[1] = _return_arr[0]
-    Square(a1, splitter, _return_arr)
-    _j = _return_arr[1]
-    _1 = _return_arr[0]
-    Two_Two_Sum(_j, _1, _l, _2, _return_arr)
-    return_arr[5] = _return_arr[3]
-    return_arr[4] = _return_arr[2]
-    return_arr[3] = _return_arr[1]
-    return_arr[2] = _return_arr[0]
-    return
+    _k, _1 = Two_Product(a1, _0, splitter)
+    _l, _2, x1 = Two_One_Sum(_k, _1, _j)
+    _j, _1 = Square(a1, splitter)
+    x5, x4, x3, x2 = Two_Two_Sum(_j, _1, _l, _2)
+    return x5, x4, x3, x2, x1, x0
 
 
 #*****************************************************************************#
@@ -556,75 +308,46 @@ def Two_Square(a1, a0, splitter, return_arr):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep="points, return_arr", num_points="int")
-def exactinit2d(points, num_points, return_arr):
-    every_other = declare('bint')
-    epsilon, splitter, xmin, xmax, ymin, ymax, b = declare('double', 7)
-    i = declare('int')
+@njit(cache=True)
+def exactinit2d(points):
 
-    epsilon = 1.0
-    splitter = 1.0
     every_other = True
+    half = np.float64(0.5)
+    epsilon = np.float64(1.0)
+    splitter = np.float64(1.0)
+    one = np.float64(1.0)
+    two = np.float64(2.0)
     while True:
-        epsilon *= 0.5
+        epsilon *= half
         if every_other:
-          splitter *= 2.0
+          splitter *= two
         every_other = not every_other
-        if 1.0 + epsilon != 1.0:
+        if one + epsilon != one:
             pass
         else:
             break
-    splitter += 1.0
-    return_arr[0] = splitter
+    splitter += one
 
-    xmin = points[2*0 + 0]
-    ymin = points[2*0 + 1]
-    xmax = points[2*0 + 0]
-    ymax = points[2*0 + 1]
-    for i in range(num_points):
-        if points[2*i + 0] > xmax:
-            xmax = points[2*i + 0]
-        elif points[2*i + 0] < xmin:
-            xmin = points[2*i + 0]
-        if points[2*i + 1] > ymax:
-            ymax = points[2*i + 1]
-        elif points[2*i + 1] < ymin:
-            ymin = points[2*i + 1]
-    
-    b = xmax - xmin
-    if b < ymax - ymin:
-        b = ymax - ymin
+    xmin = np.min(points[:, 0])
+    ymin = np.min(points[:, 1])
+    xmax = np.max(points[:, 0])
+    ymax = np.max(points[:, 1])
+    b = max(xmax-xmin, ymax-ymin)
 
-    #--- Error bounds for orientation and incircle tests. ---#
-    # resulterrbound
-    return_arr[1] = (3.0 + 8.0 * epsilon) * epsilon
+    # Error bounds for orientation and incircle tests.
+    resulterrbound = (3.0 + 8.0 * epsilon) * epsilon
+    ccwerrboundA = (3.0 + 16.0 * epsilon) * epsilon
+    ccwerrboundB = (2.0 + 12.0 * epsilon) * epsilon
+    ccwerrboundC = (9.0 + 64.0 * epsilon) * epsilon * epsilon
+    iccerrboundA = (10.0 + 96.0 * epsilon) * epsilon
+    iccerrboundB = (4.0 + 48.0 * epsilon) * epsilon
+    iccerrboundC = (44.0 + 576.0 * epsilon) * epsilon * epsilon
+    static_filter_o2d = 32 * epsilon * b * b
+    static_filter_i2d = 1984 * epsilon * b * b * b
 
-    # ccwerrboundA
-    return_arr[2] = (3.0 + 16.0 * epsilon) * epsilon
-    
-    # ccwerrboundB
-    return_arr[3] = (2.0 + 12.0 * epsilon) * epsilon
-    
-    # ccwerrboundC
-    return_arr[4] = (9.0 + 64.0 * epsilon) * epsilon * epsilon
-    
-    # iccerrboundA
-    return_arr[5] = (10.0 + 96.0 * epsilon) * epsilon
-    
-    # iccerrboundB
-    return_arr[6] = (4.0 + 48.0 * epsilon) * epsilon
-    
-    # iccerrboundC
-    return_arr[7] = (44.0 + 576.0 * epsilon) * epsilon * epsilon
-    
-    # static_filter_o2d
-    return_arr[8] = 32 * epsilon * b * b
-    
-    # static_filter_i2d
-    return_arr[9] = 1984 * epsilon * b * b * b
-
-    return
-_exactinit2d = Cython(exactinit2d)
+    return resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
+           iccerrboundA, iccerrboundB, iccerrboundC, splitter, \
+           static_filter_o2d, static_filter_i2d
 
 
 @njit(cache=True)
@@ -684,19 +407,14 @@ def exactinit3d(points):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, h', b='double', int='elen, return_')
+@njit(cache=True)
 def grow_expansion(elen, e, b, h):
     # e and h can be the same.
-    Q, enow = declare('double', 2)
-    eindex = declare('int')
-    _return_arr = declare('matrix(2, "double")')
 
     Q = b
-    for eindex in range(elen):
+    for eindex in range(0, elen):
         enow = e[eindex]
-        Two_Sum(Q, enow, _return_arr)
-        Q = _return_arr[1]
-        h[eindex] = _return_arr[0]
+        Q, h[eindex] = Two_Sum(Q, enow)
 
     h[elen] = Q
 
@@ -717,20 +435,15 @@ def grow_expansion(elen, e, b, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, h', b='double', int='elen, return_')
+@njit(cache=True)
 def grow_expansion_zeroelim(elen, e, b, h):
     # e and h can be the same.
-    hindex, eindex = declare('int', 2)
-    Q, enow, hh = declare('double', 3)
-    _return_arr = declare('matrix(2, "double")')
 
-    hindex = 0
+    hindex = int(0)
     Q = b
-    for eindex in range(elen):
+    for eindex in range(0, elen):
         enow = e[eindex]
-        Two_Sum(Q, enow, _return_arr)
-        Q = _return_arr[1]
-        hh = _return_arr[0]
+        Q, hh = Two_Sum(Q, enow)
         if hh != 0.0:
             h[hindex] = hh
             hindex += 1
@@ -755,19 +468,14 @@ def grow_expansion_zeroelim(elen, e, b, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, f, h', int='elen, flen, return_')
+@njit(cache=True)
 def expansion_sum(elen, e, flen, f, h):
     # e and h can be the same, but f and h cannot.
-    Q, hnow = declare('double', 2)
-    hindex, hlast, findex = declare('int', 3)
-    _return_arr = declare('matrix(2, "double")')
 
     Q = f[0]
-    for hindex in range(elen):
+    for hindex in range(0, elen):
         hnow = e[hindex]
-        Two_Sum(Q, hnow, _return_arr)
-        Q = _return_arr[1]
-        h[hindex] = _return_arr[0]
+        Q, h[hindex] = Two_Sum(Q, hnow)
 
     hindex = elen
     h[hindex] = Q
@@ -776,9 +484,7 @@ def expansion_sum(elen, e, flen, f, h):
         Q = f[findex]
         for hindex in range(findex, hlast+1):
             hnow = h[hindex]
-            Two_Sum(Q, hnow, _return_arr)
-            Q = _return_arr[1]
-            h[hindex] = _return_arr[0]
+            Q, h[hindex] = Two_Sum(Q, hnow)
         hlast += 1
         h[hlast] = Q
 
@@ -799,19 +505,14 @@ def expansion_sum(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, f, h', int='elen, flen, return_')
+@njit(cache=True)
 def expansion_sum_zeroelim1(elen, e, flen, f, h):
     # e and h can be the same, but f and h cannot.
-    Q, hnow = declare('double', 2)
-    hindex, hlast, findex, index = declare('int', 4)
-    _return_arr = declare('matrix(2, "double")')
 
     Q = f[0]
     for hindex in range(0, elen):
         hnow = e[hindex]
-        Two_Sum(Q, hnow, _return_arr)
-        Q = _return_arr[1]
-        h[hindex] = _return_arr[0]
+        Q, h[hindex] = Two_Sum(Q, hnow)
 
     hindex = elen
     h[hindex] = Q
@@ -820,9 +521,7 @@ def expansion_sum_zeroelim1(elen, e, flen, f, h):
         Q = f[findex]
         for hindex in range(findex, hlast+1):
             hnow = h[hindex]
-            Two_Sum(Q, hnow, _return_arr)
-            Q = _return_arr[1]
-            h[hindex] = _return_arr[0]
+            Q, h[hindex] = Two_Sum(Q, hnow)
         hlast += 1
         h[hlast] = Q
 
@@ -853,20 +552,15 @@ def expansion_sum_zeroelim1(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, f, h', int='elen, flen, return_')
+@njit(cache=True)
 def expansion_sum_zeroelim2(elen, e, flen, f, h):
     # e and h can be the same, but f and h cannot.
-    Q, enow, hh = declare('double', 3)
-    hindex, eindex, hlast, findex = declare('int', 4)
-    _return_arr = declare('matrix(2, "double")')
 
     hindex = 0
     Q = f[0]
-    for eindex in range(elen):
+    for eindex in range(0, elen):
         enow = e[eindex]
-        Two_Sum(Q, enow, _return_arr)
-        Q = _return_arr[1]
-        hh = _return_arr[0]
+        Q, hh = Two_Sum(Q, enow)
         if hh != 0.0:
             h[hindex] = hh
             hindex += 1
@@ -878,9 +572,7 @@ def expansion_sum_zeroelim2(elen, e, flen, f, h):
         Q = f[findex]
         for eindex in range(0, hlast+1):
             enow = h[eindex]
-            Two_Sum(Q, enow, _return_arr)
-            Q = _return_arr[1]
-            hh = _return_arr[0]
+            Q, hh = Two_Sum(Q, enow)
             if hh != 0:
                 h[hindex] = hh
                 hindex += 1
@@ -904,12 +596,9 @@ def expansion_sum_zeroelim2(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, f, h', int='elen, flen, return_')
+@njit(cache=True)
 def fast_expansion_sum(elen, e, flen, f, h):
     # h cannot be e or f.
-    enow, fnow, Q = declare('double', 3)
-    eindex, findex, hindex = declare('int', 3)
-    _return_arr = declare('matrix(2, "double")')
 
     enow = e[0]
     fnow = f[0]
@@ -927,46 +616,34 @@ def fast_expansion_sum(elen, e, flen, f, h):
     hindex = 0
     if (eindex < elen) and (findex < flen):
         if (fnow > enow) == (fnow > -enow):
-            Fast_Two_Sum(enow, Q, _return_arr)
-            Q = _return_arr[1]
-            h[0] = _return_arr[0]
+            Q, h[0] = Fast_Two_Sum(enow, Q)
             eindex += 1
             enow = e[eindex]
         else:
-            Fast_Two_Sum(fnow, Q, _return_arr)
-            Q = _return_arr[1]
-            h[0] = _return_arr[0]
+            Q, h[0] = Fast_Two_Sum(fnow, Q)
             findex += 1
             fnow = f[findex]
 
         hindex = 1
         while eindex < elen and findex < flen:
             if (fnow > enow) == (fnow > -enow):
-                Two_Sum(Q, enow, _return_arr)
-                Q = _return_arr[1]
-                h[hindex] = _return_arr[0]
+                Q, h[hindex] = Two_Sum(Q, enow)
                 eindex += 1
                 enow = e[eindex]
             else:
-                Two_Sum(Q, fnow, _return_arr)
-                Q = _return_arr[1]
-                h[hindex] = _return_arr[0]
+                Q, h[hindex] = Two_Sum(Q, fnow)
                 findex += 1
                 fnow = f[findex]
             hindex += 1
 
     while eindex < elen:
-        Two_Sum(Q, enow, _return_arr)
-        Q = _return_arr[1]
-        h[hindex] = _return_arr[0]
+        Q, h[hindex] = Two_Sum(Q, enow)
         eindex += 1
         enow = e[eindex]
         hindex += 1
 
     while findex < flen:
-        Two_Sum(Q, fnow, _return_arr)
-        Q = _return_arr[1]
-        h[hindex] = _return_arr[0]
+        Q, h[hindex] = Two_Sum(Q, fnow)
         findex += 1
         fnow = f[findex]
         hindex += 1
@@ -990,12 +667,9 @@ def fast_expansion_sum(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, f, h', int='elen, flen, return_')
+@njit(cache=True)
 def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
     # h cannot be e or f.
-    enow, fnow, Q, hh = declare('double', 4)
-    eindex, findex, hindex = declare('int', 3)
-    _return_arr = declare('matrix(2, "double")')
 
     enow = e[0]
     fnow = f[0]
@@ -1013,15 +687,11 @@ def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
     hindex = 0
     if (eindex < elen) and (findex < flen):
         if (fnow > enow) == (fnow > -enow):
-            Fast_Two_Sum(enow, Q, _return_arr)
-            Q = _return_arr[1]
-            hh = _return_arr[0]
+            Q, hh = Fast_Two_Sum(enow, Q)
             eindex += 1
             enow = e[eindex]
         else:
-            Fast_Two_Sum(fnow, Q, _return_arr)
-            Q = _return_arr[1]
-            hh = _return_arr[0]
+            Q, hh = Fast_Two_Sum(fnow, Q)
             findex += 1
             fnow = f[findex]
 
@@ -1031,15 +701,11 @@ def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
 
         while (eindex < elen) and (findex < flen):
             if (fnow > enow) == (fnow > -enow):
-                Two_Sum(Q, enow, _return_arr)
-                Q = _return_arr[1]
-                hh = _return_arr[0]
+                Q, hh = Two_Sum(Q, enow)
                 eindex += 1
                 enow = e[eindex]
             else:
-                Two_Sum(Q, fnow, _return_arr)
-                Q = _return_arr[1]
-                hh = _return_arr[0]
+                Q, hh = Two_Sum(Q, fnow)
                 findex += 1
                 fnow = f[findex]
 
@@ -1048,9 +714,7 @@ def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
                 hindex += 1
 
     while eindex < elen:
-        Two_Sum(Q, enow, _return_arr)
-        Q = _return_arr[1]
-        hh = _return_arr[0]
+        Q, hh = Two_Sum(Q, enow)
         eindex += 1
         enow = e[eindex]
         if hh != 0.0:
@@ -1058,9 +722,7 @@ def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
             hindex += 1
 
     while findex < flen:
-        Two_Sum(Q, fnow, _return_arr)
-        Q = _return_arr[1]
-        hh = _return_arr[0]
+        Q, hh = Two_Sum(Q, fnow)
         findex += 1
         fnow = f[findex]
         if hh != 0.0:
@@ -1085,12 +747,9 @@ def fast_expansion_sum_zeroelim(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, f, h', int='elen, flen, return_')
+@njit(cache=True)
 def linear_expansion_sum(elen, e, flen, f, h):
     # h cannot be e or f.
-    enow, fnow, g0, Q, q, R = declare('double', 6)
-    eindex, findex, hindex, i = declare('int', 4)
-    _return_arr = declare('matrix(2, "double")')
 
     enow = e[0]
     fnow = f[0]
@@ -1107,15 +766,11 @@ def linear_expansion_sum(elen, e, flen, f, h):
 
     if (eindex < elen) and \
         ((findex >= flen) or ((fnow > enow) == (fnow > -enow))):
-        Fast_Two_Sum(enow, g0, _return_arr)
-        Q = _return_arr[1]
-        q = _return_arr[0]
+        Q, q = Fast_Two_Sum(enow, g0)
         eindex += 1
         enow = e[eindex]
     else:
-        Fast_Two_Sum(fnow, g0, _return_arr)
-        Q = _return_arr[1]
-        q = _return_arr[0]
+        Q, q = Fast_Two_Sum(fnow, g0)
         findex += 1
         fnow = f[findex]
 
@@ -1123,20 +778,14 @@ def linear_expansion_sum(elen, e, flen, f, h):
         hindex = i
         if (eindex < elen) and \
             ((findex >= flen) or ((fnow > enow) == (fnow > -enow))):
-            Fast_Two_Sum(enow, q, _return_arr)
-            R = _return_arr[1]
-            h[hindex] = _return_arr[0]
+            R, h[hindex] = Fast_Two_Sum(enow, q)
             eindex += 1
             enow = e[eindex]
         else:
-            Fast_Two_Sum(fnow, q, _return_arr)
-            R = _return_arr[1]
-            h[hindex] = _return_arr[0]
+            R, h[hindex] = Fast_Two_Sum(fnow, q)
             findex += 1
             fnow = f[findex]
-        Two_Sum(Q, R, _return_arr)
-        Q = _return_arr[1]
-        q = _return_arr[0]
+        Q, q = Two_Sum(Q, R)
 
     h[hindex] = q
     h[hindex + 1] = Q
@@ -1156,12 +805,9 @@ def linear_expansion_sum(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, f, h', int='elen, flen, return_')
+@njit(cache=True)
 def linear_expansion_sum_zeroelim(elen, e, flen, f, h):
     # h cannot be e or f.
-    enow, fnow, g0, Q, q, R, hh = declare('double', 7)
-    eindex, findex, hindex, count = declare('int', 4)
-    _return_arr = declare('matrix(2, "double")')
 
     enow = e[0]
     fnow = f[0]
@@ -1179,35 +825,25 @@ def linear_expansion_sum_zeroelim(elen, e, flen, f, h):
 
     if (eindex < elen) and \
         ((findex >= flen) or ((fnow > enow) == (fnow > -enow))):
-        Fast_Two_Sum(enow, g0, _return_arr)
-        Q = _return_arr[1]
-        q = _return_arr[0]
+        Q, q = Fast_Two_Sum(enow, g0)
         eindex += 1
         enow = e[eindex]
     else:
-        Fast_Two_Sum(fnow, g0)
-        Q = _return_arr[1]
-        q = _return_arr[0]
+        Q, q = Fast_Two_Sum(fnow, g0)
         findex += 1
         fnow = f[findex]
 
     for count in range(2, elen+flen+1):
         if (eindex < elen) and \
             ((findex >= flen) or ((fnow > enow) == (fnow > -enow))):
-            Fast_Two_Sum(enow, q, _return_arr)
-            R = _return_arr[1]
-            hh = _return_arr[0]
+            R, hh = Fast_Two_Sum(enow, q)
             eindex += 1
             enow = e[eindex]
         else:
-            Fast_Two_Sum(fnow, q, _return_arr)
-            R = _return_arr[1]
-            hh = _return_arr[0]
+            R, hh = Fast_Two_Sum(fnow, q)
             findex += 1
             fnow = f[findex]
-        Two_Sum(Q, R, _return_arr)
-        Q = _return_arr[1]
-        q = _return_arr[0]
+        Q, q = Two_Sum(Q, R)
         if hh != 0:
             h[hindex] = hh
             hindex += 1
@@ -1227,7 +863,7 @@ def linear_expansion_sum_zeroelim(elen, e, flen, f, h):
 #                                                                             #
 #   scale_expansion()   Multiply an expansion by a scalar.                    #
 #                                                                             #
-#   Sets h = be.  See either version of Shewchuk's paper for details.         #
+#   Sets h = e + f.  See either version of Shewchuk's paper for details.      #
 #                                                                             #
 #   Maintains the nonoverlapping property.  If round-to-even is used (as      #
 #   with IEEE 754), maintains the strongly nonoverlapping and nonadjacent     #
@@ -1236,32 +872,19 @@ def linear_expansion_sum_zeroelim(elen, e, flen, f, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, h', int='elen, return_', double='b, splitter')
+@njit(cache=True)
 def scale_expansion(elen, e, b, h, splitter):
     # e and h cannot be the same.
-    bhi, blo, Q, enow, product1, product0, sum_ = declare('double', 7)
-    hindex, eindex = declare('int', 2)
-    _return_arr = declare('matrix(2, "double")')
 
-    Split(b, splitter, _return_arr)
-    bhi = _return_arr[1]
-    blo = _return_arr[0]
-    Two_Product_Presplit(e[0], b, bhi, blo, splitter, _return_arr)
-    Q = _return_arr[1]
-    h[0] = _return_arr[0]
+    bhi, blo = Split(b, splitter)
+    Q, h[0] = Two_Product_Presplit(e[0], b, bhi, blo, splitter)
     hindex = 1
     for eindex in range(1, elen):
         enow = e[eindex]
-        Two_Product_Presplit(enow, b, bhi, blo, splitter, _return_arr)
-        product1 = _return_arr[1]
-        product0 = _return_arr[0]
-        Two_Sum(Q, product0, _return_arr)
-        sum_ = _return_arr[1]
-        h[hindex] = _return_arr[0]
+        product1, product0 = Two_Product_Presplit(enow, b, bhi, blo, splitter)
+        sum_, h[hindex] = Two_Sum(Q, product0)
         hindex += 1
-        Two_Sum(product1, sum_, _return_arr)
-        Q = _return_arr[1]
-        h[hindex] = _return_arr[0]
+        Q, h[hindex] = Two_Sum(product1, sum_)
         hindex += 1
 
     h[hindex] = Q
@@ -1274,7 +897,7 @@ def scale_expansion(elen, e, b, h, splitter):
 #                                eliminating zero components from the         #
 #                                output expansion.                            #
 #                                                                             #
-#   Sets h = be.  See either version of Shewchuk's paper for details.         #
+#   Sets h = e + f.  See either version of Shewchuk's paper for details.      #
 #                                                                             #
 #   Maintains the nonoverlapping property.  If round-to-even is used (as      #
 #   with IEEE 754), maintains the strongly nonoverlapping and nonadjacent     #
@@ -1283,39 +906,26 @@ def scale_expansion(elen, e, b, h, splitter):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, h', int='elen, return_', double='b, splitter')
+@njit(cache=True)
 def scale_expansion_zeroelim(elen, e, b, h, splitter):
     # e and h cannot be the same.
-    bhi, blo, Q, enow, product1, product0, sum_, hh = declare('double', 8)
-    hindex, eindex = declare('int', 2)
-    _return_arr = declare('matrix(2, "double")')
 
-    Split(b, splitter, _return_arr)
-    bhi = _return_arr[1]
-    blo = _return_arr[0]
-    Two_Product_Presplit(e[0], b, bhi, blo, splitter, _return_arr)
-    Q = _return_arr[1]
-    hh = _return_arr[0]
+    bhi, blo = Split(b, splitter)
+    Q, hh = Two_Product_Presplit(e[0], b, bhi, blo, splitter)
     hindex = 0
-    if hh != 0.0:
+    if hh != 0:
         h[hindex] = hh
         hindex += 1
 
     for eindex in range(1, elen):
         enow = e[eindex]
-        Two_Product_Presplit(enow, b, bhi, blo, splitter, _return_arr)
-        product1 = _return_arr[1]
-        product0 = _return_arr[0]
-        Two_Sum(Q, product0, _return_arr)
-        sum_ = _return_arr[1]
-        hh = _return_arr[0]
-        if hh != 0.0:
+        product1, product0 = Two_Product_Presplit(enow, b, bhi, blo, splitter)
+        sum_, hh = Two_Sum(Q, product0)
+        if hh != 0:
             h[hindex] = hh
             hindex +=1
-        Fast_Two_Sum(product1, sum_, _return_arr)
-        Q = _return_arr[1]
-        hh = _return_arr[0]
-        if hh != 0.0:
+        Q, hh = Fast_Two_Sum(product1, sum_)
+        if hh != 0:
             h[hindex] = hh
             hindex += 1
 
@@ -1338,21 +948,16 @@ def scale_expansion_zeroelim(elen, e, b, h, splitter):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(doublep='e, h', int='elen, return_')
+@njit(cache=True)
 def compress(elen, e, h):
     # e and h may be the same.
-    bottom, top, eindex, hindex = declare('int', 4)
-    Q, Qnew, q, enow, hnow = declare('double', 5)
-    _return_arr = declare('matrix(2, "double")')
 
     bottom = elen - 1
     Q = e[bottom]
     for eindex in range(elen-2, -1, -1):
         enow = e[eindex]
-        Fast_Two_Sum(Q, enow, _return_arr)
-        Qnew = _return_arr[1]
-        q = _return_arr[0]
-        if q != 0.0:
+        Qnew, q = Fast_Two_Sum(Q, enow)
+        if q != 0:
             h[bottom] = Qnew
             bottom -= 1
             Q = q
@@ -1362,10 +967,8 @@ def compress(elen, e, h):
     top = 0
     for hindex in range(bottom+1, elen):
         hnow = h[hindex]
-        Fast_Two_Sum(hnow, Q, _return_arr)
-        Qnew = _return_arr[1]
-        q = _return_arr[0]
-        if q != 0.0:
+        Qnew, q = Fast_Two_Sum(hnow, Q)
+        if q != 0:
             h[top] = q
             top += 1
         Q = Qnew
@@ -1382,10 +985,8 @@ def compress(elen, e, h):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(e='doublep', elen='int', return_='double')
+@njit(cache=True)
 def estimate(elen, e):
-    Q = declare('double')
-    eindex = declare('int')
 
     Q = e[0]
     for eindex in range(1, elen):
@@ -1413,12 +1014,10 @@ def estimate(elen, e):
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(
-    double='pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, ' + \
-           'ccwerrboundB, ccwerrboundC, resulterrbound, return_')
+@njit(cache=True)
 def orient2dadapt(
-        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, ccwerrboundB,
-        ccwerrboundC, resulterrbound):
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, global_arr,
+        ccwerrboundB, ccwerrboundC, resulterrbound):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1426,30 +1025,23 @@ def orient2dadapt(
     len(D) = 16
     len(u) = 4
     '''
-    B = declare('matrix(4, "double")')
-    C1 = declare('matrix(8, "double")')
-    C2 = declare('matrix(12, "double")')
-    D = declare('matrix(16, "double")')
-    u = declare('matrix(4, "double")')
-    bcx, acx, acy, bcy, det, errbound = declare('double', 6)
-    detleft, detlefttail, detright, detrighttail = declare('double', 4)
-    acxtail, bcxtail, acytail, bcytail = declare('double', 4)
-    s1, s0, t1, t0 = declare('double', 4)
-    C1length, C2length, Dlength = declare('int', 3)
+
+    B = global_arr[0:4]
+    C1 = global_arr[4:12]
+    C2 = global_arr[12:24]
+    D = global_arr[24:40]
+    u = global_arr[40:44]
 
     bcx = pb_x - pc_x
     acx = pa_x - pc_x
     acy = pa_y - pc_y
     bcy = pb_y - pc_y
 
-    Two_Product(acx, bcy, splitter, B)
-    detleft = B[1]
-    detlefttail = B[0]
-    Two_Product(acy, bcx, splitter, B)
-    detright = B[1]
-    detrighttail = B[0]
+    detleft, detlefttail = Two_Product(acx, bcy, splitter)
+    detright, detrighttail = Two_Product(acy, bcx, splitter)
 
-    Two_Two_Diff(detleft, detlefttail, detright, detrighttail, B)
+    B[3], B[2], B[1], B[0] = Two_Two_Diff(detleft, detlefttail,
+                                          detright, detrighttail)
 
     det = estimate(4, B)
     errbound = ccwerrboundB * detsum
@@ -1461,49 +1053,39 @@ def orient2dadapt(
     acytail = Two_Diff_Tail(pa_y, pc_y, acy)
     bcytail = Two_Diff_Tail(pb_y, pc_y, bcy)
 
-    if (acxtail == 0.0) and (acytail == 0.0) and (bcxtail == 0.0) and (bcytail == 0.0):
+    if (acxtail == 0.0) and (acytail == 0.0) and \
+            (bcxtail == 0.0) and (bcytail == 0.0):
         return det
 
-    errbound = ccwerrboundC * detsum + resulterrbound * abs(det)
-    det += (acx * bcytail + bcy * acxtail) - (acy * bcxtail + bcx * acytail)
-    if abs(det) >= errbound:
+    errbound = ccwerrboundC * detsum + resulterrbound * np.abs(det)
+    det += (acx * bcytail + bcy * acxtail) - \
+           (acy * bcxtail + bcx * acytail)
+    # if (det >= errbound) or (-det >= errbound):
+    if np.abs(det) >= errbound:
         return det
 
-    Two_Product(acxtail, bcy, splitter, u)
-    s1 = u[1]
-    s0 = u[0]
-    Two_Product(acytail, bcx, splitter, u)
-    t1 = u[1]
-    t0 = u[0]
-    Two_Two_Diff(s1, s0, t1, t0, u)
+    s1, s0 = Two_Product(acxtail, bcy, splitter)
+    t1, t0 = Two_Product(acytail, bcx, splitter)
+    u[3], u[2], u[1], u[0] = Two_Two_Diff(s1, s0, t1, t0)
     C1length = fast_expansion_sum_zeroelim(4, B, 4, u, C1)
 
-    Two_Product(acx, bcytail, splitter, u)
-    s1 = u[1]
-    s0 = u[0]
-    Two_Product(acy, bcxtail, splitter, u)
-    t1 = u[1]
-    t0 = u[0]
-    Two_Two_Diff(s1, s0, t1, t0, u)
+    s1, s0 = Two_Product(acx, bcytail, splitter)
+    t1, t0 = Two_Product(acy, bcxtail, splitter)
+    u[3], u[2], u[1], u[0] = Two_Two_Diff(s1, s0, t1, t0)
     C2length = fast_expansion_sum_zeroelim(C1length, C1, 4, u, C2)
 
-    Two_Product(acxtail, bcytail, splitter, u)
-    s1 = u[1]
-    s0 = u[0]
-    Two_Product(acytail, bcxtail, splitter, u)
-    t1 = u[1]
-    t0 = u[0]
-    Two_Two_Diff(s1, s0, t1, t0, u)
+    s1, s0 = Two_Product(acxtail, bcytail, splitter)
+    t1, t0 = Two_Product(acytail, bcxtail, splitter)
+    u[3], u[2], u[1], u[0] = Two_Two_Diff(s1, s0, t1, t0)
     Dlength = fast_expansion_sum_zeroelim(C2length, C2, 4, u, D)
 
     return D[Dlength - 1]
 
 
-@annotate(
-    double='pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, return_',
-    exactinit_arr='doublep')
+@njit(cache=True)
 def orient2d(
-        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, exactinit_arr):
+    pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, splitter, global_arr, ccwerrboundA,
+    ccwerrboundB, ccwerrboundC, resulterrbound, det, detsum):
     '''
     len(B) = 4
     len(C1) = 8
@@ -1511,33 +1093,14 @@ def orient2d(
     len(D) = 16
     len(u) = 4
     '''
-    det_left, det_right, det, detsum, errbound, splitter = declare('double', 6)
-    resulterrbound, ccwerrboundA, ccwerrboundB = declare('double', 3)
-    ccwerrboundC, static_filter_o2d = declare('double', 2)
-
-    splitter = exactinit_arr[0]
-    resulterrbound = exactinit_arr[1]
-    ccwerrboundA = exactinit_arr[2]
-    ccwerrboundB = exactinit_arr[3]
-    ccwerrboundC = exactinit_arr[4]
-    static_filter_o2d = exactinit_arr[8]
-
-    det_left = (pa_x - pc_x) * (pb_y - pc_y)
-    det_right = (pa_y - pc_y) * (pb_x - pc_x)
-    det = det_left - det_right
-
-    if abs(det) > static_filter_o2d:
-        return det
-
-    detsum = abs(det_left) + abs(det_right)
+    
     errbound = ccwerrboundA * detsum
-    if abs(det) > errbound:
+    if np.abs(det) >= errbound:
         return det
 
     return orient2dadapt(
-        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, ccwerrboundB,
-        ccwerrboundC, resulterrbound)
-_orient2d = Cython(orient2d)
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, detsum, splitter, global_arr,
+        ccwerrboundB, ccwerrboundC, resulterrbound)
 
 
 #*****************************************************************************#
@@ -2062,12 +1625,10 @@ def orient3d(pa, pb, pc, pd, permanent, bc, ca, ab, adet, bdet, cdet,
 #                                                                             #
 #*****************************************************************************#
 
-@annotate(
-    double='pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, ' + \
-           'splitter, iccerrboundB, iccerrboundC, resulterrbound, return_')
+@njit(cache=True)
 def incircleadapt(
-        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, splitter,
-        iccerrboundB, iccerrboundC, resulterrbound):
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, global_arr,
+        splitter, iccerrboundB, iccerrboundC, resulterrbound):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2140,105 +1701,77 @@ def incircleadapt(
     len(bctt) = 4
     len(catt) = 4
     '''
-    bc = declare('matrix(4, "double")')
-    ca = declare('matrix(4, "double")')
-    ab = declare('matrix(4, "double")')
-    aa = declare('matrix(4, "double")')
-    bb = declare('matrix(4, "double")')
-    cc = declare('matrix(4, "double")')
-    u = declare('matrix(4, "double")')
-    v = declare('matrix(4, "double")')
-    abtt = declare('matrix(4, "double")')
-    bctt = declare('matrix(4, "double")')
-    catt = declare('matrix(4, "double")')
 
-    axbc = declare('matrix(8, "double")')
-    aybc = declare('matrix(8, "double")')
-    bxca = declare('matrix(8, "double")')
-    byca = declare('matrix(8, "double")')
-    cxab = declare('matrix(8, "double")')
-    cyab = declare('matrix(8, "double")')
-    temp8 = declare('matrix(8, "double")')
-    axtbb = declare('matrix(8, "double")')
-    axtcc = declare('matrix(8, "double")')
-    aytbb = declare('matrix(8, "double")')
-    aytcc = declare('matrix(8, "double")')
-    bxtaa = declare('matrix(8, "double")')
-    bxtcc = declare('matrix(8, "double")')
-    bytaa = declare('matrix(8, "double")')
-    bytcc = declare('matrix(8, "double")')
-    cxtaa = declare('matrix(8, "double")')
-    cxtbb = declare('matrix(8, "double")')
-    cytaa = declare('matrix(8, "double")')
-    cytbb = declare('matrix(8, "double")')
-    axtbc = declare('matrix(8, "double")')
-    aytbc = declare('matrix(8, "double")')
-    bxtca = declare('matrix(8, "double")')
-    bytca = declare('matrix(8, "double")')
-    cxtab = declare('matrix(8, "double")')
-    cytab = declare('matrix(8, "double")')
-    axtbctt = declare('matrix(8, "double")')
-    aytbctt = declare('matrix(8, "double")')
-    bxtcatt = declare('matrix(8, "double")')
-    bytcatt = declare('matrix(8, "double")')
-    cxtabtt = declare('matrix(8, "double")')
-    cytabtt = declare('matrix(8, "double")')
-    abt = declare('matrix(8, "double")')
-    bct = declare('matrix(8, "double")')
-    cat = declare('matrix(8, "double")')
-
-    axxbc = declare('matrix(16, "double")')
-    ayybc = declare('matrix(16, "double")')
-    bxxca = declare('matrix(16, "double")')
-    byyca = declare('matrix(16, "double")')
-    cxxab = declare('matrix(16, "double")')
-    cyyab = declare('matrix(16, "double")')
-    temp16a = declare('matrix(16, "double")')
-    temp16b = declare('matrix(16, "double")')
-    temp16c = declare('matrix(16, "double")')
-    axtbct = declare('matrix(16, "double")')
-    aytbct = declare('matrix(16, "double")')
-    bxtcat = declare('matrix(16, "double")')
-    bytcat = declare('matrix(16, "double")')
-    cxtabt = declare('matrix(16, "double")')
-    cytabt = declare('matrix(16, "double")')
-
-    adet = declare('matrix(32, "double")')
-    bdet = declare('matrix(32, "double")')
-    cdet = declare('matrix(32, "double")')
-    temp32a = declare('matrix(32, "double")')
-    temp32b = declare('matrix(32, "double")')
-
-    temp48 = declare('matrix(48, "double")')
-
-    abdet = declare('matrix(64, "double")')
-    temp64 = declare('matrix(64, "double")')
-
-    fin1 = declare('matrix(1152, "double")')
-    fin2 = declare('matrix(1152, "double")')
-
-    ablen, abttlen, bcttlen, cattlen, axbclen, aybclen, bxcalen = declare('int', 7)
-    bycalen, cxablen, cyablen, temp8len, axtbblen, axtcclen = declare('int', 6)
-    aytbblen, aytcclen, bxtaalen, bxtcclen, bytaalen, bytcclen = declare('int', 6)
-    cxtaalen, cxtbblen, cytaalen, cytbblen, axtbclen, aytbclen = declare('int', 6)
-    bxtcalen, bytcalen, cxtablen, cytablen, axtbcttlen, aytbcttlen = declare('int', 6)
-    bxtcattlen, bytcattlen, cxtabttlen, cytabttlen, abtlen, bctlen = declare('int', 6)
-    catlen, axxbclen, ayybclen, bxxcalen, byycalen, cxxablen = declare('int', 6)
-    cyyablen, temp16alen, temp16blen, temp16clen, axtbctlen = declare('int', 5)
-    aytbctlen, bxtcatlen, bytcatlen, cxtabtlen, cytabtlen, alen = declare('int', 6)
-    blen, clen, temp32alen, temp32blen, temp48len, abdetlen = declare('int', 6)
-    temp64len, finlength = declare('int', 2)
-
-    finnow = declare('double*')
-    finother = declare('double*')
-    finswap = declare('double*')
-
-    adx, bdx, cdx, ady, bdy, cdy, bdxcdy1, bdxcdy0, cdxbdy1, cdxbdy0 = declare('double', 10)
-    cdxady1, cdxady0, adxcdy1, adxcdy0, adxbdy1, adxbdy0, bdxady1 = declare('double', 7)
-    bdxady0, det, errbound, adxtail, adytail, bdxtail, bdytail = declare('double', 7)
-    cdxtail, cdytail, adxadx1, adxadx0, adyady1, adyady0, bdxbdx1 = declare('double', 7)
-    bdxbdx0, bdybdy1, bdybdy0, cdxcdx1, cdxcdx0, cdycdy1, cdycdy0 = declare('double', 7)
-    ti1, ti0, tj1, tj0, negate = declare('double', 5)
+    u = global_arr[40:44]
+    v = global_arr[44:48]
+    bc = global_arr[48:52]
+    ca = global_arr[52:56]
+    ab = global_arr[56:60]
+    axbc = global_arr[60:68]
+    axxbc = global_arr[68:84]
+    aybc = global_arr[84:92]
+    ayybc = global_arr[92:108]
+    adet = global_arr[108:140]
+    bxca = global_arr[140:148]
+    bxxca = global_arr[148:164]
+    byca = global_arr[164:172]
+    byyca = global_arr[172:188]
+    bdet = global_arr[188:220]
+    cxab = global_arr[220:228]
+    cxxab = global_arr[228:244]
+    cyab = global_arr[244:252]
+    cyyab = global_arr[252:268]
+    cdet = global_arr[268:300]
+    abdet = global_arr[300:364]
+    fin1 = global_arr[364:1516]
+    fin2 = global_arr[1516:2668]
+    aa = global_arr[2668:2672]
+    bb = global_arr[2672:2676]
+    cc = global_arr[2676:2680]
+    temp8 = global_arr[2680:2688]
+    temp16a = global_arr[2688:2704]
+    temp16b = global_arr[2704:2720]
+    temp16c = global_arr[2720:2736]
+    temp32a = global_arr[2736:2768]
+    temp32b = global_arr[2768:2800]
+    temp48 = global_arr[2800:2848]
+    temp64 = global_arr[2848:2912]
+    axtbb = global_arr[2912:2920]
+    axtcc = global_arr[2920:2928]
+    aytbb = global_arr[2928:2936]
+    aytcc = global_arr[2936:2944]
+    bxtaa = global_arr[2944:2952]
+    bxtcc = global_arr[2952:2960]
+    bytaa = global_arr[2960:2968]
+    bytcc = global_arr[2968:2976]
+    cxtaa = global_arr[2976:2984]
+    cxtbb = global_arr[2984:2992]
+    cytaa = global_arr[2992:3000]
+    cytbb = global_arr[3000:3008]
+    axtbc = global_arr[3008:3016]
+    aytbc = global_arr[3016:3024]
+    bxtca = global_arr[3024:3032]
+    bytca = global_arr[3032:3040]
+    cxtab = global_arr[3040:3048]
+    cytab = global_arr[3048:3056]
+    axtbct = global_arr[3056:3072]
+    aytbct = global_arr[3072:3088]
+    bxtcat = global_arr[3088:3104]
+    bytcat = global_arr[3104:3120]
+    cxtabt = global_arr[3120:3136]
+    cytabt = global_arr[3136:3152]
+    axtbctt = global_arr[3152:3160]
+    aytbctt = global_arr[3160:3168]
+    bxtcatt = global_arr[3168:3176]
+    bytcatt = global_arr[3176:3184]
+    cxtabtt = global_arr[3184:3192]
+    cytabtt = global_arr[3192:3200]
+    abt = global_arr[3200:3208]
+    bct = global_arr[3208:3216]
+    cat = global_arr[3216:3224]
+    abtt = global_arr[3224:3228]
+    bctt = global_arr[3228:3232]
+    catt = global_arr[3232:3236]
 
     adx = pa_x - pd_x
     bdx = pb_x - pd_x
@@ -2247,39 +1780,30 @@ def incircleadapt(
     bdy = pb_y - pd_y
     cdy = pc_y - pd_y
 
-    Two_Product(bdx, cdy, splitter, bc)
-    bdxcdy1 = bc[1]
-    bdxcdy0 = bc[0]
-    Two_Product(cdx, bdy, splitter, bc)
-    cdxbdy1 = bc[1]
-    cdxbdy0 = bc[0]
-    Two_Two_Diff(bdxcdy1, bdxcdy0, cdxbdy1, cdxbdy0, bc)
+    bdxcdy1, bdxcdy0 = Two_Product(bdx, cdy, splitter)
+    cdxbdy1, cdxbdy0 = Two_Product(cdx, bdy, splitter)
+    bc[3], bc[2], bc[1], bc[0] = Two_Two_Diff(bdxcdy1, bdxcdy0,
+                                              cdxbdy1, cdxbdy0)
     axbclen = scale_expansion_zeroelim(4, bc, adx, axbc, splitter)
     axxbclen = scale_expansion_zeroelim(axbclen, axbc, adx, axxbc, splitter)
     aybclen = scale_expansion_zeroelim(4, bc, ady, aybc, splitter)
     ayybclen = scale_expansion_zeroelim(aybclen, aybc, ady, ayybc, splitter)
     alen = fast_expansion_sum_zeroelim(axxbclen, axxbc, ayybclen, ayybc, adet)
 
-    Two_Product(cdx, ady, splitter, ca)
-    cdxady1 = ca[1]
-    cdxady0 = ca[0]
-    Two_Product(adx, cdy, splitter, ca)
-    adxcdy1 = ca[1]
-    adxcdy0 = ca[0]
-    Two_Two_Diff(cdxady1, cdxady0, adxcdy1, adxcdy0, ca)
+    cdxady1, cdxady0 = Two_Product(cdx, ady, splitter)
+    adxcdy1, adxcdy0 = Two_Product(adx, cdy, splitter)
+    ca[3], ca[2], ca[1], ca[0] = Two_Two_Diff(cdxady1, cdxady0,
+                                              adxcdy1, adxcdy0)
     bxcalen = scale_expansion_zeroelim(4, ca, bdx, bxca, splitter)
     bxxcalen = scale_expansion_zeroelim(bxcalen, bxca, bdx, bxxca, splitter)
     bycalen = scale_expansion_zeroelim(4, ca, bdy, byca, splitter)
     byycalen = scale_expansion_zeroelim(bycalen, byca, bdy, byyca, splitter)
     blen = fast_expansion_sum_zeroelim(bxxcalen, bxxca, byycalen, byyca, bdet)
 
-    Two_Product(adx, bdy, splitter, ab)
-    adxbdy1 = ab[1]
-    adxbdy0 = ab[0]
-    Two_Product(bdx, ady, splitter, ab)
-    bdxady1 = ab[1]
-    bdxady0 = ab[0]
-    Two_Two_Diff(adxbdy1, adxbdy0, bdxady1, bdxady0, ab)
+    adxbdy1, adxbdy0 = Two_Product(adx, bdy, splitter)
+    bdxady1, bdxady0 = Two_Product(bdx, ady, splitter)
+    ab[3], ab[2], ab[1], ab[0] = Two_Two_Diff(adxbdy1, adxbdy0,
+                                              bdxady1, bdxady0)
     cxablen = scale_expansion_zeroelim(4, ab, cdx, cxab, splitter)
     cxxablen = scale_expansion_zeroelim(cxablen, cxab, cdx, cxxab, splitter)
     cyablen = scale_expansion_zeroelim(4, ab, cdy, cyab, splitter)
@@ -2300,218 +1824,204 @@ def incircleadapt(
     bdytail = Two_Diff_Tail(pb_y, pd_y, bdy)
     cdxtail = Two_Diff_Tail(pc_x, pd_x, cdx)
     cdytail = Two_Diff_Tail(pc_y, pd_y, cdy)
-    if (adxtail == 0.0) and (bdxtail == 0.0) and (cdxtail == 0.0) and (adytail == 0.0) and (bdytail == 0.0) and (cdytail == 0.0):
+    if (adxtail == 0.0) and (bdxtail == 0.0) and (cdxtail == 0.0) and \
+            (adytail == 0.0) and (bdytail == 0.0) and (cdytail == 0.0):
         return det
 
 
-    errbound = iccerrboundC * permanent + resulterrbound * abs(det)
-    det += ( ((adx * adx + ady * ady) * ((bdx * cdytail + cdy * bdxtail)
-                                         - (bdy * cdxtail + cdx * bdytail))
-              + 2.0*(adx * adxtail + ady * adytail)*(bdx * cdy - bdy * cdx)) + 
-             ((bdx * bdx + bdy * bdy) * ((cdx * adytail + ady * cdxtail)
-                                         - (cdy * adxtail + adx * cdytail))
-              + 2.0*(bdx * bdxtail + bdy * bdytail)*(cdx * ady - cdy * adx)) + 
-             ((cdx * cdx + cdy * cdy) * ((adx * bdytail + bdy * adxtail)
-                                         - (ady * bdxtail + bdx * adytail))
-              + 2.0*(cdx * cdxtail + cdy * cdytail)*(adx * bdy - ady * bdx)) )
+    errbound = iccerrboundC * permanent + resulterrbound * np.abs(det)
+    det += ((adx * adx + ady * ady) * ((bdx * cdytail + cdy * bdxtail)
+                                       - (bdy * cdxtail + cdx * bdytail))
+            + 2.0*(adx * adxtail + ady * adytail)*(bdx * cdy - bdy * cdx)) + \
+           ((bdx * bdx + bdy * bdy) * ((cdx * adytail + ady * cdxtail)
+                                       - (cdy * adxtail + adx * cdytail))
+            + 2.0*(bdx * bdxtail + bdy * bdytail)*(cdx * ady - cdy * adx)) + \
+           ((cdx * cdx + cdy * cdy) * ((adx * bdytail + bdy * adxtail)
+                                       - (ady * bdxtail + bdx * adytail))
+            + 2.0*(cdx * cdxtail + cdy * cdytail)*(adx * bdy - ady * bdx))
     if (det >= errbound) or (-det >= errbound):
         return det
 
     finnow = fin1
     finother = fin2
 
-    if (bdxtail != 0.0) or (bdytail != 0.0) or (cdxtail != 0.0) or (cdytail != 0.0):
-        Square(adx, splitter, aa)
-        adxadx1 = aa[1]
-        adxadx0 = aa[0]
-        Square(ady, splitter, aa)
-        adyady1 = aa[1]
-        adyady0 = aa[0]
-        Two_Two_Sum(adxadx1, adxadx0, adyady1, adyady0, aa)
+    if (bdxtail != 0.0) or (bdytail != 0.0) or \
+            (cdxtail != 0.0) or (cdytail != 0.0):
+        adxadx1, adxadx0 = Square(adx, splitter)
+        adyady1, adyady0 = Square(ady, splitter)
+        aa[3], aa[2], aa[1], aa[0] = Two_Two_Sum(adxadx1, adxadx0,
+                                               adyady1, adyady0)
 
-    if (cdxtail != 0.0) or (cdytail != 0.0) or (adxtail != 0.0) or (adytail != 0.0):
-        Square(bdx, splitter, bb)
-        bdxbdx1 = bb[1]
-        bdxbdx0 = bb[0]
-        Square(bdy, splitter, bb)
-        bdybdy1 = bb[1]
-        bdybdy0 = bb[0]
-        Two_Two_Sum(bdxbdx1, bdxbdx0, bdybdy1, bdybdy0, bb)
+    if (cdxtail != 0.0) or (cdytail != 0.0) or \
+            (adxtail != 0.0) or (adytail != 0.0):
+        bdxbdx1, bdxbdx0 = Square(bdx, splitter)
+        bdybdy1, bdybdy0 = Square(bdy, splitter)
+        bb[3], bb[2], bb[1], bb[0] = Two_Two_Sum(bdxbdx1, bdxbdx0,
+                                                 bdybdy1, bdybdy0)
 
-    if (adxtail != 0.0) or (adytail != 0.0) or (bdxtail != 0.0) or (bdytail != 0.0):
-        Square(cdx, splitter, cc)
-        cdxcdx1 = cc[1]
-        cdxcdx0 = cc[0]
-        Square(cdy, splitter, cc)
-        cdycdy1 = cc[1]
-        cdycdy0 = cc[0]
-        Two_Two_Sum(cdxcdx1, cdxcdx0, cdycdy1, cdycdy0, cc)
+    if (adxtail != 0.0) or (adytail != 0.0) or \
+            (bdxtail != 0.0) or (bdytail != 0.0):
+        cdxcdx1, cdxcdx0 = Square(cdx, splitter)
+        cdycdy1, cdycdy0 = Square(cdy, splitter)
+        cc[3], cc[2], cc[1], cc[0] = Two_Two_Sum(cdxcdx1, cdxcdx0,
+                                                 cdycdy1, cdycdy0)
 
     if adxtail != 0.0:
         axtbclen = scale_expansion_zeroelim(4, bc, adxtail, axtbc, splitter)
-        temp16alen = scale_expansion_zeroelim(
-            axtbclen, axtbc, 2.0 * adx, temp16a, splitter)
+        temp16alen = scale_expansion_zeroelim(axtbclen, axtbc, 2.0 * adx,
+                                              temp16a, splitter)
 
         axtcclen = scale_expansion_zeroelim(4, cc, adxtail, axtcc, splitter)
-        temp16blen = scale_expansion_zeroelim(
-            axtcclen, axtcc, bdy, temp16b, splitter)
+        temp16blen = scale_expansion_zeroelim(axtcclen, axtcc, bdy, temp16b,
+                                              splitter)
 
         axtbblen = scale_expansion_zeroelim(4, bb, adxtail, axtbb, splitter)
-        temp16clen = scale_expansion_zeroelim(
-            axtbblen, axtbb, -cdy, temp16c, splitter)
+        temp16clen = scale_expansion_zeroelim(axtbblen, axtbb, -cdy, temp16c,
+                                              splitter)
 
-        temp32alen = fast_expansion_sum_zeroelim(
-            temp16alen, temp16a, temp16blen, temp16b, temp32a)
-        temp48len = fast_expansion_sum_zeroelim(
-            temp16clen, temp16c, temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(
-            finlength, finnow, temp48len, temp48, finother)
+        temp32alen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                temp16blen, temp16b, temp32a)
+        temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
+                                                temp32alen, temp32a, temp48)
+        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+                                                temp48, finother)
         finswap = finnow
         finnow = finother
         finother = finswap
 
     if adytail != 0.0:
         aytbclen = scale_expansion_zeroelim(4, bc, adytail, aytbc, splitter)
-        temp16alen = scale_expansion_zeroelim(
-            aytbclen, aytbc, 2.0 * ady, temp16a, splitter)
+        temp16alen = scale_expansion_zeroelim(aytbclen, aytbc, 2.0 * ady,
+                                              temp16a, splitter)
 
         aytbblen = scale_expansion_zeroelim(4, bb, adytail, aytbb, splitter)
-        temp16blen = scale_expansion_zeroelim(
-            aytbblen, aytbb, cdx, temp16b, splitter)
+        temp16blen = scale_expansion_zeroelim(aytbblen, aytbb, cdx, temp16b,
+                                              splitter)
 
         aytcclen = scale_expansion_zeroelim(4, cc, adytail, aytcc, splitter)
-        temp16clen = scale_expansion_zeroelim(
-            aytcclen, aytcc, -bdx, temp16c, splitter)
+        temp16clen = scale_expansion_zeroelim(aytcclen, aytcc, -bdx, temp16c,
+                                              splitter)
 
-        temp32alen = fast_expansion_sum_zeroelim(
-            temp16alen, temp16a, temp16blen, temp16b, temp32a)
-        temp48len = fast_expansion_sum_zeroelim(
-            temp16clen, temp16c, temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(
-            finlength, finnow, temp48len, temp48, finother)
+        temp32alen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                temp16blen, temp16b, temp32a)
+        temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
+                                                temp32alen, temp32a, temp48)
+        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+                                                temp48, finother)
         finswap = finnow
         finnow = finother
         finother = finswap
 
     if bdxtail != 0.0:
         bxtcalen = scale_expansion_zeroelim(4, ca, bdxtail, bxtca, splitter)
-        temp16alen = scale_expansion_zeroelim(
-            bxtcalen, bxtca, 2.0 * bdx, temp16a, splitter)
+        temp16alen = scale_expansion_zeroelim(bxtcalen, bxtca, 2.0 * bdx,
+                                              temp16a, splitter)
 
         bxtaalen = scale_expansion_zeroelim(4, aa, bdxtail, bxtaa, splitter)
-        temp16blen = scale_expansion_zeroelim(
-            bxtaalen, bxtaa, cdy, temp16b, splitter)
+        temp16blen = scale_expansion_zeroelim(bxtaalen, bxtaa, cdy, temp16b,
+                                              splitter)
 
         bxtcclen = scale_expansion_zeroelim(4, cc, bdxtail, bxtcc, splitter)
-        temp16clen = scale_expansion_zeroelim(
-            bxtcclen, bxtcc, -ady, temp16c, splitter)
+        temp16clen = scale_expansion_zeroelim(bxtcclen, bxtcc, -ady, temp16c,
+                                              splitter)
 
-        temp32alen = fast_expansion_sum_zeroelim(
-            temp16alen, temp16a, temp16blen, temp16b, temp32a)
-        temp48len = fast_expansion_sum_zeroelim(
-            temp16clen, temp16c, temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(
-            finlength, finnow, temp48len, temp48, finother)
+        temp32alen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                temp16blen, temp16b, temp32a)
+        temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
+                                                temp32alen, temp32a, temp48)
+        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+                                                temp48, finother)
         finswap = finnow
         finnow = finother
         finother = finswap
 
     if bdytail != 0.0:
         bytcalen = scale_expansion_zeroelim(4, ca, bdytail, bytca, splitter)
-        temp16alen = scale_expansion_zeroelim(
-            bytcalen, bytca, 2.0 * bdy, temp16a, splitter)
+        temp16alen = scale_expansion_zeroelim(bytcalen, bytca, 2.0 * bdy,
+                                              temp16a, splitter)
 
         bytcclen = scale_expansion_zeroelim(4, cc, bdytail, bytcc, splitter)
-        temp16blen = scale_expansion_zeroelim(
-            bytcclen, bytcc, adx, temp16b, splitter)
+        temp16blen = scale_expansion_zeroelim(bytcclen, bytcc, adx, temp16b,
+                                              splitter)
 
         bytaalen = scale_expansion_zeroelim(4, aa, bdytail, bytaa, splitter)
-        temp16clen = scale_expansion_zeroelim(
-            bytaalen, bytaa, -cdx, temp16c, splitter)
+        temp16clen = scale_expansion_zeroelim(bytaalen, bytaa, -cdx, temp16c,
+                                              splitter)
 
-        temp32alen = fast_expansion_sum_zeroelim(
-            temp16alen, temp16a, temp16blen, temp16b, temp32a)
-        temp48len = fast_expansion_sum_zeroelim(
-            temp16clen, temp16c, temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(
-            finlength, finnow, temp48len, temp48, finother)
+        temp32alen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                temp16blen, temp16b, temp32a)
+        temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
+                                                temp32alen, temp32a, temp48)
+        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+                                                temp48, finother)
         finswap = finnow
         finnow = finother
         finother = finswap
 
     if cdxtail != 0.0:
         cxtablen = scale_expansion_zeroelim(4, ab, cdxtail, cxtab, splitter)
-        temp16alen = scale_expansion_zeroelim(
-            cxtablen, cxtab, 2.0 * cdx, temp16a, splitter)
+        temp16alen = scale_expansion_zeroelim(cxtablen, cxtab, 2.0 * cdx,
+                                              temp16a, splitter)
 
         cxtbblen = scale_expansion_zeroelim(4, bb, cdxtail, cxtbb, splitter)
-        temp16blen = scale_expansion_zeroelim(
-            cxtbblen, cxtbb, ady, temp16b, splitter)
+        temp16blen = scale_expansion_zeroelim(cxtbblen, cxtbb, ady, temp16b,
+                                              splitter)
 
         cxtaalen = scale_expansion_zeroelim(4, aa, cdxtail, cxtaa, splitter)
-        temp16clen = scale_expansion_zeroelim(
-            cxtaalen, cxtaa, -bdy, temp16c, splitter)
+        temp16clen = scale_expansion_zeroelim(cxtaalen, cxtaa, -bdy, temp16c,
+                                              splitter)
 
-        temp32alen = fast_expansion_sum_zeroelim(
-            temp16alen, temp16a, temp16blen, temp16b, temp32a)
-        temp48len = fast_expansion_sum_zeroelim(
-            temp16clen, temp16c, temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(
-            finlength, finnow, temp48len, temp48, finother)
+        temp32alen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                temp16blen, temp16b, temp32a)
+        temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
+                                                temp32alen, temp32a, temp48)
+        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+                                                temp48, finother)
         finswap = finnow
         finnow = finother
         finother = finswap
 
     if cdytail != 0.0:
         cytablen = scale_expansion_zeroelim(4, ab, cdytail, cytab, splitter)
-        temp16alen = scale_expansion_zeroelim(
-            cytablen, cytab, 2.0 * cdy, temp16a, splitter)
+        temp16alen = scale_expansion_zeroelim(cytablen, cytab, 2.0 * cdy,
+                                              temp16a, splitter)
 
         cytaalen = scale_expansion_zeroelim(4, aa, cdytail, cytaa, splitter)
-        temp16blen = scale_expansion_zeroelim(
-            cytaalen, cytaa, bdx, temp16b, splitter)
+        temp16blen = scale_expansion_zeroelim(cytaalen, cytaa, bdx, temp16b,
+                                              splitter)
 
         cytbblen = scale_expansion_zeroelim(4, bb, cdytail, cytbb, splitter)
-        temp16clen = scale_expansion_zeroelim(
-            cytbblen, cytbb, -adx, temp16c, splitter)
+        temp16clen = scale_expansion_zeroelim(cytbblen, cytbb, -adx, temp16c,
+                                              splitter)
 
-        temp32alen = fast_expansion_sum_zeroelim(
-            temp16alen, temp16a, temp16blen, temp16b, temp32a)
-        temp48len = fast_expansion_sum_zeroelim(
-            temp16clen, temp16c, temp32alen, temp32a, temp48)
-        finlength = fast_expansion_sum_zeroelim(
-            finlength, finnow, temp48len, temp48, finother)
+        temp32alen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                temp16blen, temp16b, temp32a)
+        temp48len = fast_expansion_sum_zeroelim(temp16clen, temp16c,
+                                                temp32alen, temp32a, temp48)
+        finlength = fast_expansion_sum_zeroelim(finlength, finnow, temp48len,
+                                                temp48, finother)
         finswap = finnow
         finnow = finother
         finother = finswap
 
+
     if (adxtail != 0.0) or (adytail != 0.0):
-        if (bdxtail != 0.0) or (bdytail != 0.0) or (cdxtail != 0.0) or (cdytail != 0.0):
-            Two_Product(bdxtail, cdy, splitter, u)
-            ti1 = u[1]
-            ti0 = u[0]
-            Two_Product(bdx, cdytail, splitter, u)
-            tj1 = u[1]
-            tj0 = u[0]
-            Two_Two_Sum(ti1, ti0, tj1, tj0, u)
+        if (bdxtail != 0.0) or (bdytail != 0.0) or \
+                (cdxtail != 0.0) or (cdytail != 0.0):
+            ti1, ti0 = Two_Product(bdxtail, cdy, splitter)
+            tj1, tj0 = Two_Product(bdx, cdytail, splitter)
+            u[3], u[2], u[1], u[0] = Two_Two_Sum(ti1, ti0, tj1, tj0)
             negate = -bdy
-            Two_Product(cdxtail, negate, splitter, v)
-            ti1 = v[1]
-            ti0 = v[0]
+            ti1, ti0 = Two_Product(cdxtail, negate, splitter)
             negate = -bdytail
-            Two_Product(cdx, negate, splitter, v)
-            tj1 = v[1]
-            tj0 = v[0]
-            Two_Two_Sum(ti1, ti0, tj1, tj0, v)
+            tj1, tj0 = Two_Product(cdx, negate, splitter)
+            v[3], v[2], v[1], v[0] = Two_Two_Sum(ti1, ti0, tj1, tj0)
             bctlen = fast_expansion_sum_zeroelim(4, u, 4, v, bct)
 
-            Two_Product(bdxtail, cdytail, splitter, bctt)
-            ti1 = bctt[1]
-            ti0 = bctt[0]
-            Two_Product(cdxtail, bdytail, splitter, bctt)
-            tj1 = bctt[1]
-            tj0 = bctt[0]
-            Two_Two_Diff(ti1, ti0, tj1, tj0, bctt)
+            ti1, ti0 = Two_Product(bdxtail, cdytail, splitter)
+            tj1, tj0 = Two_Product(cdxtail, bdytail, splitter)
+            bctt[3], bctt[2], bctt[1], bctt[0] = Two_Two_Diff(ti1, ti0, tj1,
+                                                              tj0)
             bcttlen = 4
         else:
             bct[0] = 0.0
@@ -2520,120 +2030,122 @@ def incircleadapt(
             bcttlen = 1
 
         if adxtail != 0.0:
-            temp16alen = scale_expansion_zeroelim(
-                axtbclen, axtbc, adxtail, temp16a, splitter)
-            axtbctlen = scale_expansion_zeroelim(
-                bctlen, bct, adxtail, axtbct, splitter)
-            temp32alen = scale_expansion_zeroelim(
-                axtbctlen, axtbct, 2.0 * adx, temp32a, splitter)
-            temp48len = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp32alen, temp32a, temp48)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp48len, temp48, finother)
+            temp16alen = scale_expansion_zeroelim(axtbclen, axtbc, adxtail,
+                                                  temp16a, splitter)
+            axtbctlen = scale_expansion_zeroelim(bctlen, bct, adxtail, axtbct,
+                                                 splitter)
+            temp32alen = scale_expansion_zeroelim(axtbctlen, axtbct, 2.0 * adx,
+                                                  temp32a, splitter)
+            temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                    temp32alen, temp32a,
+                                                    temp48)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp48len, temp48,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
             if bdytail != 0.0:
-                temp8len = scale_expansion_zeroelim(
-                    4, cc, adxtail, temp8, splitter)
-                temp16alen = scale_expansion_zeroelim(
-                    temp8len, temp8, bdytail, temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(
-                    finlength, finnow, temp16alen, temp16a, finother)
+                temp8len = scale_expansion_zeroelim(4, cc, adxtail, temp8,
+                                                    splitter)
+                temp16alen = scale_expansion_zeroelim(temp8len, temp8, bdytail,
+                                                      temp16a, splitter)
+                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                        temp16alen, temp16a,
+                                                        finother)
                 finswap = finnow
                 finnow = finother
                 finother = finswap
 
             if cdytail != 0.0:
-                temp8len = scale_expansion_zeroelim(
-                    4, bb, -adxtail, temp8, splitter)
-                temp16alen = scale_expansion_zeroelim(
-                    temp8len, temp8, cdytail, temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(
-                    finlength, finnow, temp16alen, temp16a, finother)
+                temp8len = scale_expansion_zeroelim(4, bb, -adxtail, temp8,
+                                                    splitter)
+                temp16alen = scale_expansion_zeroelim(temp8len, temp8, cdytail,
+                                                      temp16a, splitter)
+                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                        temp16alen, temp16a,
+                                                        finother)
                 finswap = finnow
                 finnow = finother
                 finother = finswap
 
-            temp32alen = scale_expansion_zeroelim(
-                axtbctlen, axtbct, adxtail, temp32a, splitter)
-            axtbcttlen = scale_expansion_zeroelim(
-                bcttlen, bctt, adxtail, axtbctt, splitter)
-            temp16alen = scale_expansion_zeroelim(
-                axtbcttlen, axtbctt, 2.0 * adx, temp16a, splitter)
-            temp16blen = scale_expansion_zeroelim(
-                axtbcttlen, axtbctt, adxtail, temp16b, splitter)
-            temp32blen = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp16blen, temp16b, temp32b)
-            temp64len = fast_expansion_sum_zeroelim(
-                temp32alen, temp32a, temp32blen, temp32b, temp64)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp64len, temp64, finother)
+            temp32alen = scale_expansion_zeroelim(axtbctlen, axtbct, adxtail,
+                                                temp32a, splitter)
+            axtbcttlen = scale_expansion_zeroelim(bcttlen, bctt, adxtail,
+                                                  axtbctt, splitter)
+            temp16alen = scale_expansion_zeroelim(axtbcttlen, axtbctt,
+                                                  2.0 * adx, temp16a, splitter)
+            temp16blen = scale_expansion_zeroelim(axtbcttlen, axtbctt, adxtail,
+                                                  temp16b, splitter)
+            temp32blen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                     temp16blen, temp16b,
+                                                     temp32b)
+            temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
+                                                    temp32blen, temp32b,
+                                                    temp64)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp64len, temp64,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
         if adytail != 0.0:
-            temp16alen = scale_expansion_zeroelim(
-                aytbclen, aytbc, adytail, temp16a, splitter)
-            aytbctlen = scale_expansion_zeroelim(
-                bctlen, bct, adytail, aytbct, splitter)
-            temp32alen = scale_expansion_zeroelim(
-                aytbctlen, aytbct, 2.0 * ady, temp32a, splitter)
-            temp48len = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp32alen, temp32a, temp48)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp48len, temp48, finother)
+            temp16alen = scale_expansion_zeroelim(aytbclen, aytbc, adytail,
+                                                  temp16a, splitter)
+            aytbctlen = scale_expansion_zeroelim(bctlen, bct, adytail, aytbct,
+                                                 splitter)
+            temp32alen = scale_expansion_zeroelim(aytbctlen, aytbct, 2.0 * ady,
+                                                  temp32a, splitter)
+            temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                    temp32alen, temp32a,
+                                                    temp48)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp48len, temp48,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
-            temp32alen = scale_expansion_zeroelim(
-                aytbctlen, aytbct, adytail, temp32a, splitter)
-            aytbcttlen = scale_expansion_zeroelim(
-                bcttlen, bctt, adytail, aytbctt, splitter)
-            temp16alen = scale_expansion_zeroelim(
-                aytbcttlen, aytbctt, 2.0 * ady, temp16a, splitter)
-            temp16blen = scale_expansion_zeroelim(
-                aytbcttlen, aytbctt, adytail, temp16b, splitter)
-            temp32blen = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp16blen, temp16b, temp32b)
-            temp64len = fast_expansion_sum_zeroelim(
-                temp32alen, temp32a, temp32blen, temp32b, temp64)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp64len, temp64, finother)
+            temp32alen = scale_expansion_zeroelim(aytbctlen, aytbct, adytail,
+                                                  temp32a, splitter)
+            aytbcttlen = scale_expansion_zeroelim(bcttlen, bctt, adytail,
+                                                  aytbctt, splitter)
+            temp16alen = scale_expansion_zeroelim(aytbcttlen, aytbctt,
+                                                  2.0 * ady, temp16a, splitter)
+            temp16blen = scale_expansion_zeroelim(aytbcttlen, aytbctt, adytail,
+                                                  temp16b, splitter)
+            temp32blen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                     temp16blen, temp16b,
+                                                     temp32b)
+            temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
+                                                    temp32blen, temp32b,
+                                                    temp64)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp64len, temp64,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
     if (bdxtail != 0.0) or (bdytail != 0.0):
-        if (cdxtail != 0.0) or (cdytail != 0.0) or (adxtail != 0.0) or (adytail != 0.0):
-            Two_Product(cdxtail, ady, splitter, u)
-            ti1 = u[1]
-            ti0 = u[0]
-            Two_Product(cdx, adytail, splitter, u)
-            tj1 = u[1]
-            tj0 = u[0]
-            Two_Two_Sum(ti1, ti0, tj1, tj0, u)
+        if (cdxtail != 0.0) or (cdytail != 0.0) or \
+                (adxtail != 0.0) or (adytail != 0.0):
+            ti1, ti0 = Two_Product(cdxtail, ady, splitter)
+            tj1, tj0 = Two_Product(cdx, adytail, splitter)
+            u[3], u[2], u[1], u[0] = Two_Two_Sum(ti1, ti0, tj1, tj0)
             negate = -cdy
-            Two_Product(adxtail, negate, splitter, v)
-            ti1 = v[1]
-            ti0 = v[0]
+            ti1, ti0 = Two_Product(adxtail, negate, splitter)
             negate = -cdytail
-            Two_Product(adx, negate, splitter, v)
-            tj1 = v[1]
-            tj0 = v[0]
-            Two_Two_Sum(ti1, ti0, tj1, tj0, v)
+            tj1, tj0 = Two_Product(adx, negate, splitter)
+            v[3], v[2], v[1], v[0] = Two_Two_Sum(ti1, ti0, tj1, tj0)
             catlen = fast_expansion_sum_zeroelim(4, u, 4, v, cat)
 
-            Two_Product(cdxtail, adytail, splitter, catt)
-            ti1 = catt[1]
-            ti0 = catt[0]
-            Two_Product(adxtail, cdytail, splitter, catt)
-            tj1 = catt[1]
-            tj0 = catt[0]
-            Two_Two_Diff(ti1, ti0, tj1, tj0, catt)
+            ti1, ti0 = Two_Product(cdxtail, adytail, splitter)
+            tj1, tj0 = Two_Product(adxtail, cdytail, splitter)
+            catt[3], catt[2], catt[1], catt[0] = Two_Two_Diff(ti1, ti0, tj1,
+                                                              tj0)
             cattlen = 4
         else:
             cat[0] = 0.0
@@ -2642,118 +2154,120 @@ def incircleadapt(
             cattlen = 1
 
         if bdxtail != 0.0:
-            temp16alen = scale_expansion_zeroelim(
-                bxtcalen, bxtca, bdxtail, temp16a, splitter)
-            bxtcatlen = scale_expansion_zeroelim(
-                catlen, cat, bdxtail, bxtcat, splitter)
-            temp32alen = scale_expansion_zeroelim(
-                bxtcatlen, bxtcat, 2.0 * bdx, temp32a, splitter)
-            temp48len = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp32alen, temp32a, temp48)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp48len, temp48, finother)
+            temp16alen = scale_expansion_zeroelim(bxtcalen, bxtca, bdxtail,
+                                                  temp16a, splitter)
+            bxtcatlen = scale_expansion_zeroelim(catlen, cat, bdxtail, bxtcat,
+                                                 splitter)
+            temp32alen = scale_expansion_zeroelim(bxtcatlen, bxtcat, 2.0 * bdx,
+                                                  temp32a, splitter)
+            temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                    temp32alen, temp32a,
+                                                    temp48)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp48len, temp48,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
             if cdytail != 0.0:
-                temp8len = scale_expansion_zeroelim(
-                    4, aa, bdxtail, temp8, splitter)
-                temp16alen = scale_expansion_zeroelim(
-                    temp8len, temp8, cdytail, temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(
-                    finlength, finnow, temp16alen, temp16a, finother)
+                temp8len = scale_expansion_zeroelim(4, aa, bdxtail, temp8,
+                                                    splitter)
+                temp16alen = scale_expansion_zeroelim(temp8len, temp8, cdytail,
+                                                      temp16a, splitter)
+                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                        temp16alen, temp16a,
+                                                        finother)
                 finswap = finnow
                 finnow = finother
                 finother = finswap
             if adytail != 0.0:
-                temp8len = scale_expansion_zeroelim(
-                    4, cc, -bdxtail, temp8, splitter)
-                temp16alen = scale_expansion_zeroelim(
-                    temp8len, temp8, adytail, temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(
-                    finlength, finnow, temp16alen, temp16a, finother)
+                temp8len = scale_expansion_zeroelim(4, cc, -bdxtail, temp8,
+                                                    splitter)
+                temp16alen = scale_expansion_zeroelim(temp8len, temp8, adytail,
+                                                      temp16a, splitter)
+                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                        temp16alen, temp16a,
+                                                        finother)
                 finswap = finnow
                 finnow = finother
                 finother = finswap
 
-            temp32alen = scale_expansion_zeroelim(
-                bxtcatlen, bxtcat, bdxtail, temp32a, splitter)
-            bxtcattlen = scale_expansion_zeroelim(
-                cattlen, catt, bdxtail, bxtcatt, splitter)
-            temp16alen = scale_expansion_zeroelim(
-                bxtcattlen, bxtcatt, 2.0 * bdx, temp16a, splitter)
-            temp16blen = scale_expansion_zeroelim(
-                bxtcattlen, bxtcatt, bdxtail, temp16b, splitter)
-            temp32blen = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp16blen, temp16b, temp32b)
-            temp64len = fast_expansion_sum_zeroelim(
-                temp32alen, temp32a, temp32blen, temp32b, temp64)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp64len, temp64, finother)
+            temp32alen = scale_expansion_zeroelim(bxtcatlen, bxtcat, bdxtail,
+                                                  temp32a, splitter)
+            bxtcattlen = scale_expansion_zeroelim(cattlen, catt, bdxtail,
+                                                  bxtcatt, splitter)
+            temp16alen = scale_expansion_zeroelim(bxtcattlen, bxtcatt,
+                                                  2.0 * bdx, temp16a, splitter)
+            temp16blen = scale_expansion_zeroelim(bxtcattlen, bxtcatt, bdxtail,
+                                                  temp16b, splitter)
+            temp32blen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                     temp16blen, temp16b,
+                                                     temp32b)
+            temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
+                                                    temp32blen, temp32b,
+                                                    temp64)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp64len, temp64,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
         if bdytail != 0.0:
-            temp16alen = scale_expansion_zeroelim(
-                bytcalen, bytca, bdytail, temp16a, splitter)
-            bytcatlen = scale_expansion_zeroelim(
-                catlen, cat, bdytail, bytcat, splitter)
-            temp32alen = scale_expansion_zeroelim(
-                bytcatlen, bytcat, 2.0 * bdy, temp32a, splitter)
-            temp48len = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp32alen, temp32a, temp48)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp48len, temp48, finother)
+            temp16alen = scale_expansion_zeroelim(bytcalen, bytca, bdytail,
+                                                  temp16a, splitter)
+            bytcatlen = scale_expansion_zeroelim(catlen, cat, bdytail, bytcat,
+                                                 splitter)
+            temp32alen = scale_expansion_zeroelim(bytcatlen, bytcat, 2.0 * bdy,
+                                                  temp32a, splitter)
+            temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                    temp32alen, temp32a,
+                                                    temp48)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp48len, temp48,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
-            temp32alen = scale_expansion_zeroelim(
-                bytcatlen, bytcat, bdytail, temp32a, splitter)
-            bytcattlen = scale_expansion_zeroelim(
-                cattlen, catt, bdytail, bytcatt, splitter)
-            temp16alen = scale_expansion_zeroelim(
-                bytcattlen, bytcatt, 2.0 * bdy, temp16a, splitter)
-            temp16blen = scale_expansion_zeroelim(
-                bytcattlen, bytcatt, bdytail, temp16b, splitter)
-            temp32blen = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp16blen, temp16b, temp32b)
-            temp64len = fast_expansion_sum_zeroelim(
-                temp32alen, temp32a, temp32blen, temp32b, temp64)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp64len, temp64, finother)
+            temp32alen = scale_expansion_zeroelim(bytcatlen, bytcat, bdytail,
+                                                  temp32a, splitter)
+            bytcattlen = scale_expansion_zeroelim(cattlen, catt, bdytail,
+                                                  bytcatt, splitter)
+            temp16alen = scale_expansion_zeroelim(bytcattlen, bytcatt,
+                                                  2.0 * bdy, temp16a, splitter)
+            temp16blen = scale_expansion_zeroelim(bytcattlen, bytcatt, bdytail,
+                                                  temp16b, splitter)
+            temp32blen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                     temp16blen, temp16b,
+                                                     temp32b)
+            temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
+                                                    temp32blen, temp32b,
+                                                    temp64)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp64len, temp64,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
     if (cdxtail != 0.0) or (cdytail != 0.0):
-        if (adxtail != 0.0) or (adytail != 0.0) or (bdxtail != 0.0) or (bdytail != 0.0):
-            Two_Product(adxtail, bdy, splitter, u)
-            ti1 = u[1]
-            ti0 = u[0]
-            Two_Product(adx, bdytail, splitter, u)
-            tj1 = u[1]
-            tj0 = u[0]
-            Two_Two_Sum(ti1, ti0, tj1, tj0, u)
+        if (adxtail != 0.0) or (adytail != 0.0) or \
+                (bdxtail != 0.0) or (bdytail != 0.0):
+            ti1, ti0 = Two_Product(adxtail, bdy, splitter)
+            tj1, tj0 = Two_Product(adx, bdytail, splitter)
+            u[3], u[2], u[1], u[0] = Two_Two_Sum(ti1, ti0, tj1, tj0)
             negate = -ady
-            Two_Product(bdxtail, negate, splitter, v)
-            ti1 = v[1]
-            ti0 = v[0]
+            ti1, ti0 = Two_Product(bdxtail, negate, splitter)
             negate = -adytail
-            Two_Product(bdx, negate, splitter, v)
-            tj1 = v[1]
-            tj0 = v[0]
-            Two_Two_Sum(ti1, ti0, tj1, tj0, v)
+            tj1, tj0 = Two_Product(bdx, negate, splitter)
+            v[3], v[2], v[1], v[0] = Two_Two_Sum(ti1, ti0, tj1, tj0)
             abtlen = fast_expansion_sum_zeroelim(4, u, 4, v, abt)
 
-            Two_Product(adxtail, bdytail, splitter, abtt)
-            ti1 = abtt[1]
-            ti0 = abtt[0]
-            Two_Product(bdxtail, adytail, splitter, abtt)
-            tj1 = abtt[1]
-            tj0 = abtt[0]
-            Two_Two_Diff(ti1, ti0, tj1, tj0, abtt)
+            ti1, ti0 = Two_Product(adxtail, bdytail, splitter)
+            tj1, tj0 = Two_Product(bdxtail, adytail, splitter)
+            abtt[3], abtt[2], abtt[1], abtt[0] = Two_Two_Diff(ti1, ti0, tj1,
+                                                              tj0)
             abttlen = 4
         else:
             abt[0] = 0.0
@@ -2762,89 +2276,101 @@ def incircleadapt(
             abttlen = 1
 
         if cdxtail != 0.0:
-            temp16alen = scale_expansion_zeroelim(
-                cxtablen, cxtab, cdxtail, temp16a, splitter)
-            cxtabtlen = scale_expansion_zeroelim(
-                abtlen, abt, cdxtail, cxtabt, splitter)
-            temp32alen = scale_expansion_zeroelim(
-                cxtabtlen, cxtabt, 2.0 * cdx, temp32a, splitter)
-            temp48len = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp32alen, temp32a, temp48)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp48len, temp48, finother)
+            temp16alen = scale_expansion_zeroelim(cxtablen, cxtab, cdxtail,
+                                                  temp16a, splitter)
+            cxtabtlen = scale_expansion_zeroelim(abtlen, abt, cdxtail, cxtabt,
+                                                 splitter)
+            temp32alen = scale_expansion_zeroelim(cxtabtlen, cxtabt, 2.0 * cdx,
+                                                  temp32a, splitter)
+            temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                    temp32alen, temp32a,
+                                                    temp48)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp48len, temp48,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
       
             if adytail != 0.0:
-                temp8len = scale_expansion_zeroelim(
-                    4, bb, cdxtail, temp8, splitter)
-                temp16alen = scale_expansion_zeroelim(
-                    temp8len, temp8, adytail, temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(
-                    finlength, finnow, temp16alen, temp16a, finother)
+                temp8len = scale_expansion_zeroelim(4, bb, cdxtail, temp8,
+                                                    splitter)
+                temp16alen = scale_expansion_zeroelim(temp8len, temp8, adytail,
+                                                      temp16a, splitter)
+                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                        temp16alen, temp16a,
+                                                        finother)
                 finswap = finnow
                 finnow = finother
                 finother = finswap
 
             if bdytail != 0.0:
-                temp8len = scale_expansion_zeroelim(
-                    4, aa, -cdxtail, temp8, splitter)
-                temp16alen = scale_expansion_zeroelim(
-                    temp8len, temp8, bdytail, temp16a, splitter)
-                finlength = fast_expansion_sum_zeroelim(
-                    finlength, finnow, temp16alen, temp16a, finother)
+                temp8len = scale_expansion_zeroelim(4, aa, -cdxtail, temp8,
+                                                    splitter)
+                temp16alen = scale_expansion_zeroelim(temp8len, temp8, bdytail,
+                                                      temp16a, splitter)
+                finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                        temp16alen, temp16a,
+                                                        finother)
                 finswap = finnow
                 finnow = finother
                 finother = finswap
 
-            temp32alen = scale_expansion_zeroelim(
-                cxtabtlen, cxtabt, cdxtail, temp32a, splitter)
-            cxtabttlen = scale_expansion_zeroelim(
-                abttlen, abtt, cdxtail, cxtabtt, splitter)
-            temp16alen = scale_expansion_zeroelim(
-                cxtabttlen, cxtabtt, 2.0 * cdx, temp16a, splitter)
-            temp16blen = scale_expansion_zeroelim(
-                cxtabttlen, cxtabtt, cdxtail, temp16b, splitter)
-            temp32blen = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp16blen, temp16b, temp32b)
-            temp64len = fast_expansion_sum_zeroelim(
-                temp32alen, temp32a, temp32blen, temp32b, temp64)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp64len, temp64, finother)
+            temp32alen = scale_expansion_zeroelim(cxtabtlen, cxtabt, cdxtail,
+                                                  temp32a, splitter)
+            cxtabttlen = scale_expansion_zeroelim(abttlen, abtt, cdxtail,
+                                                  cxtabtt, splitter)
+            temp16alen = scale_expansion_zeroelim(cxtabttlen, cxtabtt,
+                                                  2.0 * cdx, temp16a, splitter)
+            temp16blen = scale_expansion_zeroelim(cxtabttlen, cxtabtt, cdxtail,
+                                                  temp16b, splitter)
+            temp32blen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                     temp16blen, temp16b,
+                                                     temp32b)
+            temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
+                                                    temp32blen, temp32b,
+                                                    temp64)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp64len, temp64,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
         if cdytail != 0.0:
-            temp16alen = scale_expansion_zeroelim(
-                cytablen, cytab, cdytail, temp16a, splitter)
-            cytabtlen = scale_expansion_zeroelim(
-                abtlen, abt, cdytail, cytabt, splitter)
-            temp32alen = scale_expansion_zeroelim(
-                cytabtlen, cytabt, 2.0 * cdy, temp32a, splitter)
-            temp48len = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp32alen, temp32a, temp48)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp48len, temp48, finother)
+            temp16alen = scale_expansion_zeroelim(cytablen, cytab, cdytail,
+                                                  temp16a, splitter)
+            cytabtlen = scale_expansion_zeroelim(abtlen, abt, cdytail, cytabt,
+                                                 splitter)
+            temp32alen = scale_expansion_zeroelim(cytabtlen, cytabt, 2.0 * cdy,
+                                                  temp32a, splitter)
+            temp48len = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                    temp32alen, temp32a,
+                                                    temp48)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp48len, temp48,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
 
-            temp32alen = scale_expansion_zeroelim(
-                cytabtlen, cytabt, cdytail, temp32a, splitter)
-            cytabttlen = scale_expansion_zeroelim(
-                abttlen, abtt, cdytail, cytabtt, splitter)
-            temp16alen = scale_expansion_zeroelim(
-                cytabttlen, cytabtt, 2.0 * cdy, temp16a, splitter)
-            temp16blen = scale_expansion_zeroelim(
-                cytabttlen, cytabtt, cdytail, temp16b, splitter)
-            temp32blen = fast_expansion_sum_zeroelim(
-                temp16alen, temp16a, temp16blen, temp16b, temp32b)
-            temp64len = fast_expansion_sum_zeroelim(
-                temp32alen, temp32a, temp32blen, temp32b, temp64)
-            finlength = fast_expansion_sum_zeroelim(
-                finlength, finnow, temp64len, temp64, finother)
+            temp32alen = scale_expansion_zeroelim(cytabtlen, cytabt, cdytail,
+                                                  temp32a, splitter)
+            cytabttlen = scale_expansion_zeroelim(abttlen, abtt, cdytail,
+                                                  cytabtt, splitter)
+            temp16alen = scale_expansion_zeroelim(cytabttlen, cytabtt,
+                                                  2.0 * cdy, temp16a, splitter)
+            temp16blen = scale_expansion_zeroelim(cytabttlen, cytabtt, cdytail,
+                                                  temp16b, splitter)
+            temp32blen = fast_expansion_sum_zeroelim(temp16alen, temp16a,
+                                                     temp16blen, temp16b,
+                                                     temp32b)
+            temp64len = fast_expansion_sum_zeroelim(temp32alen, temp32a,
+                                                    temp32blen, temp32b,
+                                                    temp64)
+            finlength = fast_expansion_sum_zeroelim(finlength, finnow,
+                                                    temp64len, temp64,
+                                                    finother)
             finswap = finnow
             finnow = finother
             finother = finswap
@@ -2852,11 +2378,11 @@ def incircleadapt(
     return finnow[finlength - 1]
 
 
-@annotate(
-    double='pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, return_',
-    exactinit_arr='doublep')
+@njit(cache=True)
 def incircle(
-        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, exactinit_arr):
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, global_arr, splitter,
+        iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound, det,
+        permanent):
     '''
     len(bc) = 4
     len(ca) = 4
@@ -2929,53 +2455,15 @@ def incircle(
     len(bctt) = 4
     len(catt) = 4
     '''
-    splitter, resulterrbound, iccerrboundA, iccerrboundB = declare('double', 4)
-    iccerrboundC, static_filter_i2d, adx, bdx, cdx, ady, bdy, cdy = declare('double', 8)
-    bdxcdy, cdxbdy, alift, cdxady, adxcdy, blift, adxbdy, bdxady = declare('double', 8)
-    clift, det, permanent, errbound = declare('double', 4)
 
-    splitter = exactinit_arr[0]
-    resulterrbound = exactinit_arr[1]
-    iccerrboundA = exactinit_arr[5]
-    iccerrboundB = exactinit_arr[6]
-    iccerrboundC = exactinit_arr[7]
-    static_filter_i2d = exactinit_arr[9]
-
-    adx = pa_x - pd_x
-    bdx = pb_x - pd_x
-    cdx = pc_x - pd_x
-    ady = pa_y - pd_y
-    bdy = pb_y - pd_y
-    cdy = pc_y - pd_y
-
-    bdxcdy = bdx * cdy
-    cdxbdy = cdx * bdy
-    alift = adx * adx + ady * ady
-
-    cdxady = cdx * ady
-    adxcdy = adx * cdy
-    blift = bdx * bdx + bdy * bdy
-
-    adxbdy = adx * bdy
-    bdxady = bdx * ady
-    clift = cdx * cdx + cdy * cdy
-
-    det = alift * (bdxcdy - cdxbdy) + blift * (cdxady - adxcdy) + clift * (adxbdy - bdxady)
-
-    if abs(det) > static_filter_i2d:
-        return det
-
-    permanent = (abs(bdxcdy) + abs(cdxbdy)) * alift + (abs(cdxady) + abs(adxcdy)) * blift + (abs(adxbdy) + abs(bdxady)) * clift
     errbound = iccerrboundA * permanent
-    if abs(det) > errbound:
+    if np.abs(det) > errbound:
         return det
-
-    return det
 
     return incircleadapt(
-        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, splitter,
-        iccerrboundB, iccerrboundC, resulterrbound)
-_incircle = Cython(incircle)
+        pa_x, pa_y, pb_x, pb_y, pc_x, pc_y, pd_x, pd_y, permanent, global_arr,
+        splitter, iccerrboundB, iccerrboundC, resulterrbound)
+
 
 #*****************************************************************************#
 #                                                                             #
@@ -3628,6 +3116,80 @@ def insphere(pa, pb, pc, pd, pe, ab, bc, cd, de, ea, ac, bd, ce, da, eb,
 
 def test2d():
 
+    B = np.empty(shape=4, dtype=np.float64)
+    C1 = np.empty(shape=8, dtype=np.float64)
+    C2 = np.empty(shape=12, dtype=np.float64)
+    D = np.empty(shape=16, dtype=np.float64)
+    u = np.empty(shape=4, dtype=np.float64)
+    bc = np.empty(shape=4, dtype=np.float64)
+    ca = np.empty(shape=4, dtype=np.float64)
+    ab = np.empty(shape=4, dtype=np.float64)
+    axbc = np.empty(shape=8, dtype=np.float64)
+    axxbc = np.empty(shape=16, dtype=np.float64)
+    aybc = np.empty(shape=8, dtype=np.float64)
+    ayybc = np.empty(shape=16, dtype=np.float64)
+    adet = np.empty(shape=32, dtype=np.float64)
+    bxca = np.empty(shape=8, dtype=np.float64)
+    bxxca = np.empty(shape=16, dtype=np.float64)
+    byca = np.empty(shape=8, dtype=np.float64)
+    byyca = np.empty(shape=16, dtype=np.float64)
+    bdet = np.empty(shape=32, dtype=np.float64)
+    cxab = np.empty(shape=8, dtype=np.float64)
+    cxxab = np.empty(shape=16, dtype=np.float64)
+    cyab = np.empty(shape=8, dtype=np.float64)
+    cyyab = np.empty(shape=16, dtype=np.float64)
+    cdet = np.empty(shape=32, dtype=np.float64)
+    abdet = np.empty(shape=64, dtype=np.float64)
+    fin1 = np.empty(shape=1152, dtype=np.float64)
+    fin2 = np.empty(shape=1152, dtype=np.float64)
+    temp8 = np.empty(shape=8, dtype=np.float64)
+    temp16a = np.empty(shape=16, dtype=np.float64)
+    temp16b = np.empty(shape=16, dtype=np.float64)
+    temp16c = np.empty(shape=16, dtype=np.float64)
+    temp32a = np.empty(shape=32, dtype=np.float64)
+    temp32b = np.empty(shape=32, dtype=np.float64)
+    temp48 = np.empty(shape=48, dtype=np.float64)
+    temp64 = np.empty(shape=64, dtype=np.float64)
+    axtbb = np.empty(shape=8, dtype=np.float64)
+    axtcc = np.empty(shape=8, dtype=np.float64)
+    aytbb = np.empty(shape=8, dtype=np.float64)
+    aytcc = np.empty(shape=8, dtype=np.float64)
+    bxtaa = np.empty(shape=8, dtype=np.float64)
+    bxtcc = np.empty(shape=8, dtype=np.float64)
+    bytaa = np.empty(shape=8, dtype=np.float64)
+    bytcc = np.empty(shape=8, dtype=np.float64)
+    cxtaa = np.empty(shape=8, dtype=np.float64)
+    cxtbb = np.empty(shape=8, dtype=np.float64)
+    cytaa = np.empty(shape=8, dtype=np.float64)
+    cytbb = np.empty(shape=8, dtype=np.float64)
+    axtbc = np.empty(shape=8, dtype=np.float64)
+    aytbc = np.empty(shape=8, dtype=np.float64)
+    bxtca = np.empty(shape=8, dtype=np.float64)
+    bytca = np.empty(shape=8, dtype=np.float64)
+    cxtab = np.empty(shape=8, dtype=np.float64)
+    cytab = np.empty(shape=8, dtype=np.float64)
+    axtbct = np.empty(shape=16, dtype=np.float64)
+    aytbct = np.empty(shape=16, dtype=np.float64)
+    bxtcat = np.empty(shape=16, dtype=np.float64)
+    bytcat = np.empty(shape=16, dtype=np.float64)
+    cxtabt = np.empty(shape=16, dtype=np.float64)
+    cytabt = np.empty(shape=16, dtype=np.float64)
+    axtbctt = np.empty(shape=8, dtype=np.float64)
+    aytbctt = np.empty(shape=8, dtype=np.float64)
+    bxtcatt = np.empty(shape=8, dtype=np.float64)
+    bytcatt = np.empty(shape=8, dtype=np.float64)
+    cxtabtt = np.empty(shape=8, dtype=np.float64)
+    cytabtt = np.empty(shape=8, dtype=np.float64)
+    abt = np.empty(shape=8, dtype=np.float64)
+    bct = np.empty(shape=8, dtype=np.float64)
+    cat = np.empty(shape=8, dtype=np.float64)
+    abtt = np.empty(shape=4, dtype=np.float64)
+    bctt = np.empty(shape=4, dtype=np.float64)
+    catt = np.empty(shape=4, dtype=np.float64)
+    resulterrbound, ccwerrboundA, ccwerrboundB, ccwerrboundC, \
+    iccerrboundA, iccerrboundB, iccerrboundC, splitter = exactinit2d()
+
+
     a_x = 0.0
     a_y = 0.0
     b_x = 1.0
@@ -3636,14 +3198,20 @@ def test2d():
     c_y = 1.0
     d_x = 0.0
     d_y = 0.5
-    exactinit_arr = np.empty(shape=10)
-    points = np.array([a_x, a_y, b_x, b_y, c_x, c_y, d_x, d_y])
-    num_points = 4
-    _exactinit2d(points, num_points, exactinit_arr)
-    print(exactinit_arr)
-    print(_orient2d(a_x, a_y, b_x, b_y, c_x, c_y, exactinit_arr))
+    print(orient2d(
+            a_x, a_y, b_x, b_y, c_x, c_y, splitter, B, C1, C2, D, u,
+            ccwerrboundA, ccwerrboundB, ccwerrboundC, resulterrbound))
 
-    print(_incircle(a_x, a_y, b_x, b_y, c_x, c_y, d_x, d_y, exactinit_arr))
+    print(incircle(
+            a_x, a_y, b_x, b_y, c_x, c_y, d_x, d_y, bc, ca, ab, axbc, axxbc,
+            aybc, ayybc, adet, bxca, bxxca, byca, byyca, bdet, cxab, cxxab,
+            cyab, cyyab, cdet, abdet, fin1, fin2, temp8, temp16a, temp16b,
+            temp16c, temp32a, temp32b, temp48, temp64, axtbb, axtcc, aytbb,
+            aytcc, bxtaa, bxtcc, bytaa, bytcc, cxtaa, cxtbb, cytaa, cytbb,
+            axtbc, aytbc, bxtca, bytca, cxtab, cytab, axtbct, aytbct, bxtcat,
+            bytcat, cxtabt, cytabt, axtbctt, aytbctt, bxtcatt, bytcatt,
+            cxtabtt, cytabtt, abt, bct, cat, abtt, bctt, catt, splitter,
+            iccerrboundA, iccerrboundB, iccerrboundC, resulterrbound))
 
 
 if __name__ == "__main__":
