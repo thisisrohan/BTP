@@ -30,7 +30,8 @@ def run_it(i, j, k, running_times, num_points_arr):
 
     print("   --- final_2D (non-robust) ---   ")
     start = time.time()
-    DT = D1.Delaunay2D(points_rest)
+    # DT = D1.Delaunay2D(points_rest)
+    DT = 0
     end = time.time()
     print("Time taken to make the triangulation : {} s.\n".format(end-start))
     if j == 0:
@@ -41,7 +42,8 @@ def run_it(i, j, k, running_times, num_points_arr):
 
     print("   --- final_2D_robust (no static filters) ---   ")
     start = time.time()
-    DT = D2.Delaunay2D(points_rest)
+    # DT = D2.Delaunay2D(points_rest)
+    DT = 0
     end = time.time()
     print("Time taken to make the triangulation : {} s.\n".format(end-start))
     if j == 0:
@@ -150,13 +152,13 @@ df.to_csv('results_2D_inhouse_vs_rest_01.csv')
 
 
 plt.grid(True)
-for i in range(6):
+for i in range(2, 6):
     plt.loglog(num_points_arr, running_times[:, i], linestyle='--',
                marker='.', linewidth=0.75)
 
 plt.legend([
-    r"final\_2D (non-robust)",
-    r"final\_2D\_robust (no static filters)",
+    # r"final\_2D (non-robust)",
+    # r"final\_2D\_robust (no static filters)",
     r"final\_2D\_robust (with static filters)",
     r"Triangle (incremental)",
     r"Triangle (divide-and-conquer)",

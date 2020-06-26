@@ -90,10 +90,9 @@ def hindex2xy(hindex, p):
         x = 1
         y = 0
 
-    # hindex = hindex >> 2
+    hindex = hindex >> 2
 
-    for i in range(1, p - 1):
-        hindex = hindex >> 2
+    for i in range(1, p):
         n = 2**i
         place = hindex & 3
 
@@ -107,26 +106,7 @@ def hindex2xy(hindex, p):
         elif place == 3:
             x, y = (2*n-1) - y, (n-1) - x
 
-    if p != 1:
         hindex = hindex >> 2
-        n = 2**(p - 1)
-        place = hindex & 3
-        if place == 0:
-            temp = x
-            x = n - 1 - y
-            y = temp
-        elif place == 1:
-            temp = x
-            x = n - 1 - y
-            y = n + temp
-        elif place == 2:
-            temp = x
-            x = n + y
-            y = 2*n - 1 - temp
-        else:
-            temp = x
-            x = n + y
-            y = n - 1 - temp
 
     x = int(x)
     y = int(y)

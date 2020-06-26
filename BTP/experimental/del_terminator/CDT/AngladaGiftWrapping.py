@@ -1,10 +1,18 @@
 import numpy as np
-from DT.final_2D_robust_multidimarr import _walk, _identify_cavity, \
+from CDT.DT.final_2D_robust_multidimarr import _walk, _identify_cavity, \
                                            _make_Delaunay_ball, initialize, \
-                                           exportDT_njit, Delaunay2D
-import tools.BRIO_2D_multidimarr as BRIO
-from tools.adaptive_predicates import incircle, orient2d, exactinit2d
-from numba import njit
+                                           exportDT_njit
+import CDT.DT.tools.BRIO_2D_multidimarr as BRIO
+from CDT.DT.tools.adaptive_predicates import incircle, orient2d, exactinit2d
+
+def njit(f, cache=None):
+    if cache == None:
+        return f
+    else:
+        def wrap(v):
+            return v
+        return wrap
+# from numba import njit
 
 
 @njit
@@ -694,12 +702,12 @@ def _insert_segment(
 @njit
 def assembly(
         points, vertices_ID, neighbour_ID, insertion_seq, segments, gv,
-        ic_bad_tri, ic_boundary_tri, ic_boundary_vtx, bad_tri_indicator_arr,
-        global_arr, res_arr, rev_insertion_seq, polygon_vertices, new_tri,
-        new_nbr, which_side):
+        bad_tri, boundary_tri, boundary_vtx, bad_tri_indicator_arr, global_arr,
+        res_arr, rev_insertion_seq, polygon_vertices, new_tri, new_nbr,
+        which_side):
 
     exactinit2d(points, res_arr)
-    num_tri = initialize(points, vertices_ID, neighbour_ID, insertion_seq)
+    num_tri = initialize(points, vertices_ID, neighbour_ID, insertion_seq, gv)
 
     # building rev_insertion_seq
     for i in range(points.shape[0]):
@@ -719,24 +727,22 @@ def assembly(
             point_id, old_tri, vertices_ID, neighbour_ID, points, gv, res_arr,
             global_arr)
 
-        ic_bad_tri, ic_bad_tri_end, ic_boundary_tri, ic_boundary_tri_end, \
-        ic_boundary_vtx = _identify_cavity(
+        bad_tri, bad_tri_end, boundary_tri, boundary_tri_end, \
+        boundary_vtx = _identify_cavity(
             points, point_id, enclosing_tri, neighbour_ID, vertices_ID,
-            ic_bad_tri, ic_boundary_tri, ic_boundary_vtx, gv,
-            bad_tri_indicator_arr, res_arr, global_arr)
+            bad_tri, boundary_tri, boundary_vtx, gv, bad_tri_indicator_arr,
+            res_arr, global_arr)
 
         num_tri, old_tri = _make_Delaunay_ball(
-            point_id, ic_bad_tri, ic_bad_tri_end, ic_boundary_tri,
-            ic_boundary_tri_end, ic_boundary_vtx, points, neighbour_ID,
-            vertices_ID, num_tri, gv)
+            point_id, bad_tri, bad_tri_end, boundary_tri, boundary_tri_end,
+            boundary_vtx, points, neighbour_ID, vertices_ID, num_tri, gv)
 
-        for i in range(ic_bad_tri_end):
-            t = ic_bad_tri[i]
+        for i in range(bad_tri_end):
+            t = bad_tri[i]
             bad_tri_indicator_arr[t] = False
 
     # building the constrained Delaunay triangulation by inserting the segments
-    seg_cav_tri = ic_bad_tri
-    boundary_tri = ic_boundary_tri
+    seg_cav_tri = bad_tri
     for i in range(num_segs):
         a = segments[i, 0]
         b = segments[i, 1]
@@ -765,9 +771,9 @@ class CDT_2D:
         ### MAKING THE TRIANGULATION ###
         # Arrays that will be passed into the jit-ed functions so that they
         # don't have to get their hands dirty with object creation.
-        ic_bad_tri = np.empty(50, dtype=np.int64)
-        ic_boundary_tri = np.empty(50, dtype=np.int64)
-        ic_boundary_vtx = np.empty(shape=(50, 2), dtype=np.int64)
+        bad_tri = np.empty(50, dtype=np.int64)
+        boundary_tri = np.empty(50, dtype=np.int64)
+        boundary_vtx = np.empty(shape=(50, 2), dtype=np.int64)
         bad_tri_indicator_arr = np.zeros(shape=2*N-2, dtype=np.bool_)
         global_arr = np.empty(shape=3236, dtype=np.float64)
         res_arr = np.empty(shape=10, dtype=np.float64)
@@ -779,10 +785,10 @@ class CDT_2D:
 
         assembly(
             self._points, self._vertices_ID, self._neighbour_ID,
-            self._insertion_seq, self._segments, self._gv, ic_bad_tri,
-            ic_boundary_tri, ic_boundary_vtx, bad_tri_indicator_arr,
-            global_arr, res_arr, rev_insertion_seq, polygon_vertices, new_tri,
-            new_nbr, which_side)
+            self._insertion_seq, self._segments, self._gv, bad_tri,
+            boundary_tri, boundary_vtx, bad_tri_indicator_arr, global_arr,
+            res_arr, rev_insertion_seq, polygon_vertices, new_tri, new_nbr,
+            which_side)
 
         self.simplices = None
         self.neighbours = None
@@ -805,70 +811,23 @@ class CDT_2D:
 def perf(N):
     from DT.data import make_data
     import matplotlib.pyplot as plt
-    from matplotlib import rc
 
     points, segments = make_data()
-
-    DT = Delaunay2D(points)
-    # print('DT made')
-    simplices, nbrs = DT.exportDT()
-    # print('DT exported')
-
-    fig, ax = plt.subplots(1, 2)
-    ax1 = ax[0]
-    ax2 = ax[1]
-
-    ax1.triplot(points[:, 0], points[:, 1], simplices, linewidth=0.8)
-    for i in range(segments.shape[0]):
-        a = segments[i, 0]
-        b = segments[i, 1]
-        ax1.plot(
-            [points[a, 0], points[b, 0]],
-            [points[a, 1], points[b, 1]],
-            '--',
-            color='r',
-            alpha=0.7
-        )
-    ax1.axis('equal')
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    ax1.spines["top"].set_visible(False)
-    ax1.spines["right"].set_visible(False)
-    ax1.spines["bottom"].set_visible(False)
-    ax1.spines["left"].set_visible(False)
-    # ax1.set_title("Delaunay")
-    # plt.xticks([])
-    # plt.yticks([])
-    # plt.show()
-    # plt.clf()
-
-
     CDT = CDT_2D(points, segments)
     simplices, nbrs = CDT.exportDT()
 
-    ax2.triplot(points[:, 0], points[:, 1], simplices, linewidth=0.8)
+    plt.triplot(points[:, 0], points[:, 1], simplices)
     for i in range(segments.shape[0]):
         a = segments[i, 0]
         b = segments[i, 1]
-        ax2.plot(
+        plt.plot(
             [points[a, 0], points[b, 0]],
             [points[a, 1], points[b, 1]],
             '--',
-            color='r',
+            color='k',
             alpha=0.7
         )
-    # plt.axis('equal')
-    ax2.axis('equal')
-    ax2.set_xticks([])
-    ax2.set_yticks([])
-    ax2.spines["top"].set_visible(False)
-    ax2.spines["right"].set_visible(False)
-    ax2.spines["bottom"].set_visible(False)
-    ax2.spines["left"].set_visible(False)
-    # ax2.set_title("constrained Delaunay")
-
-    # plt.show()
-    plt.savefig("CDT.png", dpi=300, bbox_to_inches='tight')
+    plt.show()
 
 
 

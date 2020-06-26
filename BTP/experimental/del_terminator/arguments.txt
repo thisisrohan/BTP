@@ -1,0 +1,37 @@
+num_entities (len = 4)
+points (N x 2)
+exactinit_arr
+vertices_ID (m7 x 3)
+neighbour_ID (m7 x 3)
+insertion_seq (N x 1)
+rev_insertion_seq (N x 3)
+segments (m5 x 3)
+gv
+global_arr
+bad_tri (m8 x 1)
+boundary_tri (m6 x 1)
+boundary_vtx (m6 x 2)
+bad_tri_indicator_arr (m7 x 1)
+which_side (N x 1) ------ [UN-REUSED]
+seg_cav_tri (= bad_tri)
+boundary_tri (in 'insert_segment' function?)
+polygon_vertices ------ [UN-REUSED]
+new_tri (m12 x 3) ------ [UN-REUSED]
+new_nbr (m13 x 3) ------ [UN-REUSED]
+ht_cap (len = 2)
+seg_ht_arr (m1 x 2)
+insertion_points (m9 x 2)
+tri_to_be_deleted (m10 x 1)
+tri_ht_arr (m2 x 6)
+hist (= rev_insertion_seq)
+duplicate_segs (m11 x 1)
+theta (len = num_segs)
+ss_params
+split_segs (m3 x 3)
+split_tri (m4 x 4)
+st_params
+delta_false
+min_angle
+qaul_f
+encroached_segs
+cluster_segs (= duplicate_segs)

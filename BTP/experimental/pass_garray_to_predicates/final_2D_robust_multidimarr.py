@@ -1,8 +1,8 @@
 import numpy as np
-import tools.BRIO_2D_multidimarr as BRIO
-from tools.adaptive_predicates import incircle, orient2d, exactinit2d
-# import BTP.experimental.pass_garray_to_predicates.tools.BRIO_2D_multidimarr as BRIO
-# from BTP.experimental.pass_garray_to_predicates.tools.adaptive_predicates import incircle, orient2d, exactinit2d
+# import tools.BRIO_2D_multidimarr as BRIO
+# from tools.adaptive_predicates import incircle, orient2d, exactinit2d
+import BTP.experimental.pass_garray_to_predicates.tools.BRIO_2D_multidimarr as BRIO
+from BTP.experimental.pass_garray_to_predicates.tools.adaptive_predicates import incircle, orient2d, exactinit2d
 import time
 
 

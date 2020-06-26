@@ -1,14 +1,19 @@
 import numpy as np
-import tools.BRIO_2D_multidimarr as BRIO
-from tools.adaptive_predicates import incircle, orient2d, exactinit2d
+import CDT.DT.tools.BRIO_2D_multidimarr as BRIO
+from CDT.DT.tools.adaptive_predicates import incircle, orient2d, exactinit2d
 # import BTP.experimental.pass_garray_to_predicates.tools.BRIO_2D_multidimarr as BRIO
 # from BTP.experimental.pass_garray_to_predicates.tools.adaptive_predicates import incircle, orient2d, exactinit2d
 import time
 
 
-def njit(f):
-    return f
-from numba import njit
+def njit(f=None, cache=None):
+    if cache == None:
+        return f
+    else:
+        def wrap(f):
+            return f
+        return wrap
+# from numba import njit
 
 
 @njit(cache=True)
@@ -301,23 +306,26 @@ def _make_Delaunay_ball(
         neighbour_ID[t_info//3, t_info % 3] = 3*t_index
 
     for i in range(boundary_tri_end):
-            if i < bad_tri_end:
-                t1 = bad_tri[i]
+        if i < bad_tri_end:
+            t1 = bad_tri[i]
+        else:
+            t1 = num_tri - (boundary_tri_end - i)
+        for j in range(boundary_tri_end):
+            if j < bad_tri_end:
+                t2 = bad_tri[j]
             else:
-                t1 = num_tri - (boundary_tri_end - i)
-            for j in range(boundary_tri_end):
-                if j < bad_tri_end:
-                    t2 = bad_tri[j]
-                else:
-                    t2 = num_tri - (boundary_tri_end-j)
-                if vertices_ID[t1, 1] == vertices_ID[t2, 2]:
-                    neighbour_ID[t1, 2] = 3*t2+1
-                    neighbour_ID[t2, 1] = 3*t1+2
-                    break
+                t2 = num_tri - (boundary_tri_end - j)
+            if vertices_ID[t1, 1] == vertices_ID[t2, 2]:
+                neighbour_ID[t1, 2] = 3*t2+1
+                neighbour_ID[t2, 1] = 3*t1+2
+                break
 
     old_tri =  bad_tri[bad_tri_end-1]
 
     if boundary_tri_end < bad_tri_end:
+        print("oops")
+        print("boundary_tri_end : {}".format(boundary_tri_end))
+        print("bad_tri_end : {}".format(bad_tri_end))
         old_tri = bad_tri[boundary_tri_end-1]
         for k in range(boundary_tri_end, bad_tri_end):
             tri = bad_tri[k]
@@ -352,7 +360,7 @@ def assembly(
         res_arr):
 
     exactinit2d(points, res_arr)
-    num_tri = initialize(points, vertices_ID, neighbour_ID, insertion_seq)
+    num_tri = initialize(points, vertices_ID, neighbour_ID, insertion_seq, gv)
     old_tri = np.int64(0)
 
     for point_id in range(3, gv):
@@ -374,7 +382,6 @@ def assembly(
         for i in range(ic_bad_tri_end):
             t = ic_bad_tri[i]
             bad_tri_indicator_arr[t] = False
-    # print(num_tri)
 
     return
 
@@ -420,9 +427,7 @@ def exportDT_njit(
 
 
 @njit(cache=True)
-def initialize(points, vertices_ID, neighbour_ID, insertion_seq):
-
-    N = len(points)
+def initialize(points, vertices_ID, neighbour_ID, insertion_seq, gv):
 
     a_x = points[0, 0]
     a_y = points[0, 1]
@@ -432,7 +437,7 @@ def initialize(points, vertices_ID, neighbour_ID, insertion_seq):
     num_tri = np.int64(0)
 
     idx = 2
-    while True:
+    while idx < gv:
         p_x = points[idx, 0]
         p_y = points[idx, 1]
         signed_area = (b_x-a_x)*(p_y-a_y)-(p_x-a_x)*(b_y-a_y)
@@ -460,15 +465,15 @@ def initialize(points, vertices_ID, neighbour_ID, insertion_seq):
     vertices_ID[0, 2] = 2      #
 
     vertices_ID[1, 0] = 0      #
-    vertices_ID[1, 1] = N      # ---> 1st triangle [ghost]
+    vertices_ID[1, 1] = gv     # ---> 1st triangle [ghost]
     vertices_ID[1, 2] = 1      #
 
     vertices_ID[2, 0] = 1      #
-    vertices_ID[2, 1] = N      # ---> 2nd triangle [ghost]
+    vertices_ID[2, 1] = gv     # ---> 2nd triangle [ghost]
     vertices_ID[2, 2] = 2      #
 
     vertices_ID[3, 0] = 2      #
-    vertices_ID[3, 1] = N      # ---> 3rd triangle [ghost]
+    vertices_ID[3, 1] = gv     # ---> 3rd triangle [ghost]
     vertices_ID[3, 2] = 0      #
 
     neighbour_ID[0, 0] = 3*2+1     #
@@ -504,7 +509,6 @@ class Delaunay2D:
         self._neighbour_ID = np.empty(shape=(2*N-2, 3), dtype=np.int64)
         self._insertion_seq, self._points = BRIO.make_BRIO(
             np.asarray(points, dtype=np.float64))
-        # print(self._insertion_seq)
 
         ### MAKING THE TRIANGULATION ###
         # Arrays that will be passed into the jit-ed functions so that they
@@ -520,8 +524,6 @@ class Delaunay2D:
             self._points, self._vertices_ID, self._neighbour_ID,
             self._insertion_seq, self._gv, ic_bad_tri, ic_boundary_tri,
             ic_boundary_vtx, bad_tri_indicator_arr, global_arr, res_arr)
-        # print(self._vertices_ID)
-        # print()
 
         self.simplices = None
         self.neighbours = None

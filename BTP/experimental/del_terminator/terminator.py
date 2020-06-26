@@ -14,13 +14,15 @@ from CDT.hash_table import initialize_seg_ht, get_seg_idx, \
 from CDT.reset_triangles import reset_tri_2
 
 
-def njit(f=None, cache=None):
-    if cache is None:
-        return f
-    else:
-        def wrap(f):
-            return f
-        return wrap
+# def njit(f=None, cache=None):
+#     if cache is None:
+#         return f
+#     else:
+#         def wrap(f):
+#             return f
+#         return wrap
+def njit(f):
+    return f
 # from numba import njit
 
 
@@ -426,6 +428,7 @@ def _identify_cavity_CDT(
                   gv : Index assigned to the ghost vertex.
     '''
 
+    print("\n ic entered, seg_idx : {}".format(seg_idx))
     bt_len = bad_tri.shape[0]
     # bt_end = int(0)
 
@@ -443,25 +446,38 @@ def _identify_cavity_CDT(
     bad_tri_indicator_arr[t_index] = True
     bt_end += 1
 
+    num_tri_visited = 1
     bt_iter = bt_end - 1
     while True:
         t_index = bad_tri[bt_iter]
+        print(t_index)
 
         for j in range(3):
             jth_nbr_idx = neighbour_ID[t_index, j] // 3
             v1 = vertices_ID[t_index, (j + 1) % 3]
             v2 = vertices_ID[t_index, (j + 2) % 3]
             s = get_seg_idx(v1, v2, seg_ht_cap, seg_ht_arr, segments)
+            print("    {}, v1 : {}, v2 : {}, s : {}".format(jth_nbr_idx, v1, v2, s))
+            # if s != seg_idx:
+            #     s = -1
             # print("v1 : {}, v2 : {}, s : {}".format(v1, v2, s))
-
+            print("    {}".format(bad_tri_indicator_arr[jth_nbr_idx]))
             if bad_tri_indicator_arr[jth_nbr_idx] == False:
+                num_tri_visited += 1
                 # i.e. jth_nbr_idx has not been stored in the ic_bad_tri
                 # array yet and it doesn't lie across a segment.
                 inside_tri = False
+                # if s == -1:
+                # if s == -1 or s != seg_idx:
                 if s == -1:
                     inside_tri = _cavity_helper(
                         point_id, jth_nbr_idx, points, vertices_ID, gv,
                         exactinit_arr, global_arr)
+                if seg_idx != -2 and s != seg_idx:
+                    inside_tri = _cavity_helper(
+                        point_id, jth_nbr_idx, points, vertices_ID, gv,
+                        exactinit_arr, global_arr)
+
                 if inside_tri == True:
                     # i.e. the j'th neighbour is a bad triangle
                     if bt_end >= bt_len:
@@ -475,7 +491,7 @@ def _identify_cavity_CDT(
                     bt_end += 1
                     bad_tri_indicator_arr[jth_nbr_idx] = True
                 else:
-                    if s != seg_idx:
+                    if seg_idx == -2:
                         # i.e. the j'th neighbour is a boundary triangle
                         if boundary_end >= boundary_len:
                             temp_arr2 = np.empty(
@@ -494,12 +510,35 @@ def _identify_cavity_CDT(
                         boundary_vtx[boundary_end, 0] = v1
                         boundary_vtx[boundary_end, 1] = v2
                         boundary_end += 1
+                    else:
+                        if s != seg_idx:
+                            # i.e. the j'th neighbour is a boundary triangle
+                            if boundary_end >= boundary_len:
+                                temp_arr2 = np.empty(
+                                    2*boundary_len, dtype=np.int64)
+                                temp_arr3 = np.empty(
+                                    shape=(2*boundary_len, 2), dtype=np.int64)
+                                for l in range(boundary_end):
+                                    temp_arr2[l] = boundary_tri[l]
+                                    temp_arr3[l, 0] = boundary_vtx[l, 0]
+                                    temp_arr3[l, 1] = boundary_vtx[l, 1]
+                                boundary_len *= 2
+                                boundary_tri = temp_arr2
+                                boundary_vtx = temp_arr3
+
+                            boundary_tri[boundary_end] = neighbour_ID[t_index, j]
+                            boundary_vtx[boundary_end, 0] = v1
+                            boundary_vtx[boundary_end, 1] = v2
+                            boundary_end += 1
+
 
         bt_iter += 1
 
         if bt_iter == bt_end:
             break
 
+    print("num_tri_visited : {}".format(num_tri_visited))
+    print(" ic exiting\n")
     return bad_tri, bt_end, boundary_tri, boundary_end, boundary_vtx
 
 
@@ -537,7 +576,7 @@ def find_smallest_angle(a_sq, b_sq, c_sq):
 def _make_Delaunay_ball_CDT(
         point_id, bad_tri, bad_tri_end, boundary_tri, boundary_tri_end,
         boundary_vtx, points, neighbour_ID, vertices_ID, num_tri, gv,
-        tri_ht_cap, tri_ht_arr):
+        tri_ht_cap, tri_ht_arr, bad_tri_indicator_arr):
     '''
     Joins all the vertices on the boundary to the new point, and forms
     the corresponding triangles along with their adjacencies. Returns the index
@@ -555,6 +594,12 @@ def _make_Delaunay_ball_CDT(
     '''
 
     # populating the cavity with new triangles
+    print("\n mdB entered")
+    if boundary_tri_end < bad_tri_end:
+        print("\n    --- oops ---")
+    print("boundary_tri : {}".format(boundary_tri[0:boundary_tri_end]//3))
+    print("bad_tri : {}".format(bad_tri[0:bad_tri_end]))
+    print("boundary_vtx : {}".format(boundary_vtx[0:boundary_tri_end]))
     for i in range(boundary_tri_end):
         if i < bad_tri_end:
             t_index = bad_tri[i]
@@ -569,10 +614,13 @@ def _make_Delaunay_ball_CDT(
         vertices_ID[t_index, 2] = boundary_vtx[i, 1]
         vertices_ID[t_index, 3] = 0
         neighbour_ID[t_info // 3, t_info % 3] = 3*t_index
+        print("{}, vid : {}".format(t_index, vertices_ID[t_index]))
+        print("bdr_tri : {}, j : {}, nid set to : {}".format(t_info//3, t_info%3, neighbour_ID[t_info // 3, t_info % 3]))
 
     for i in range(boundary_tri_end):
         if i < bad_tri_end:
             t1 = bad_tri[i]
+            bad_tri_indicator_arr[t1] = False
         else:
             t1 = num_tri - (boundary_tri_end - i)
         for j in range(boundary_tri_end):
@@ -585,10 +633,35 @@ def _make_Delaunay_ball_CDT(
                 neighbour_ID[t2, 1] = 3*t1 + 2
                 break
 
+    for i in range(boundary_tri_end):
+        if i < bad_tri_end:
+            t_index = bad_tri[i]
+        else:
+            t_index = num_tri - (boundary_tri_end - i)
+        print("{}, nid // 3 : {}".format(t_index, neighbour_ID[t_index]//3))
+        print("{}, nid % 3 : {}".format(t_index, neighbour_ID[t_index]%3))
+
+
+    for i in range(boundary_tri_end):
+        if i < bad_tri_end:
+            t_index = bad_tri[i]
+        else:
+            t_index = num_tri - (boundary_tri_end - i)
+        if neighbour_ID[t_index, 1] < 0:
+            import sys
+            sys.exit()
+        elif neighbour_ID[t_index, 2] < 0:
+
+            import sys
+            sys.exit()
+
     old_tri =  bad_tri[bad_tri_end - 1]
 
     add_new_tri_flag = True
     if boundary_tri_end < bad_tri_end:
+        import sys
+        sys.exit()
+
         add_new_tri_flag = False
         print("oops")
         print("boundary_tri_end : {}".format(boundary_tri_end))
@@ -623,6 +696,7 @@ def _make_Delaunay_ball_CDT(
                 tri_ht_arr[i, j] = -1
         initialize_tri_ht(tri_ht_cap, tri_ht_arr, vertices_ID, num_tri)
 
+    print(" mDB exited\n")
     return num_tri, old_tri, add_new_tri_flag
 
 
@@ -633,7 +707,7 @@ def new_vertex(
         seg_ht_cap, seg_ht_arr, segments, split_segs, ss_params, split_tri,
         st_params, min_angle, qual_f):
 
-    print("new_vertex entered")
+    print("\nnew_vertex entered")
     p_x = points[p, 0]
     p_y = points[p, 1]
     for i in range(boundary_end):
@@ -710,7 +784,7 @@ def new_vertex(
                 if delta_t == True or (min_tri_angle < min_angle and \
                         (seg_idx1 == -1 or seg_idx2 == -1)):
                     split_tri = enqueue_st(split_tri, st_params, t, p, v1, v2)
-    print("new_vertex exited")
+    print("new_vertex exited\n")
     return split_tri, split_segs
 
 
@@ -831,7 +905,7 @@ def split_encroached_segments(
         v2 = s_info[2]
         # checking if 's' is still a valid segment
         if segments[s, 0] == v1 and segments[s, 1] == v2:
-            print("\nyes")
+            print("\nyes {} is a valid segment".format(s))
             v1_x = points[v1, 0]
             v1_y = points[v1, 1]
             v2_x = points[v2, 0]
@@ -841,10 +915,12 @@ def split_encroached_segments(
             # concentric shell splitting
             if v1 < num_points_org and v2 < num_points_org:
                 # both v1 and v2 are input vertices
+                print("NO concentric shell splitting")
                 p_x = 0.5*(v1_x + v2_x)
                 p_y = 0.5*(v1_y + v2_y)
             if v1 < num_points_org and v2 >= num_points_org:
                 # v1 is an input vertex
+                print("concentric shell splitting")
                 shell_number = int(np.round(np.log2(radius_square**0.5/c)))
                 radius = radius_square**0.5
                 frac = c*(2**(shell_number - 1))/radius
@@ -852,6 +928,7 @@ def split_encroached_segments(
                 p_y = v1_y*(1 - frac) + v2_y*frac
             elif v1 >= num_points_org and v2 < num_points_org:
                 # v2 is an input vertex
+                print("concentric shell splitting")
                 shell_number = int(np.round(np.log2(radius_square**0.5/c)))
                 radius = radius_square**0.5
                 frac = c*(2**(shell_number - 1))/radius
@@ -895,6 +972,7 @@ def split_encroached_segments(
                 exactinit_arr, global_arr, seg_ht_cap, seg_ht_arr, segments,
                 seg_idx=s)
             print("bad_tri from t1 : {}".format(bad_tri[0:bt_end1]))
+            print("boundary_tri from t1 : {}".format(boundary_tri[0:boundary_end1]//3))
 
             bad_tri, bt_end, boundary_tri, boundary_end, \
             boundary_vtx = _identify_cavity_CDT(
@@ -903,18 +981,22 @@ def split_encroached_segments(
                 exactinit_arr, global_arr, seg_ht_cap, seg_ht_arr, segments,
                 bt_end=bt_end1, boundary_end=boundary_end1, seg_idx=s)
             print("bad_tri from t2 : {}".format(bad_tri[bt_end1:bt_end]))
+            print("boundary_tri from t2 : {}".format(boundary_tri[boundary_end1:boundary_end]//3))
 
             new_len = num_tri + boundary_end - bt_end
             if new_len >= vertices_ID.shape[0]:
                 # new_len *= 2
+                print('reallocating from {} to {}'.format(vertices_ID.shape[0], 2*new_len))
                 temp_vid = np.empty(shape=(2*new_len, 4), dtype=np.int64)
-                temp_nid = np.empty(shape=(2*new_len, 3), dtype=np.int64)
+                temp_nid = -1*np.ones(shape=(2*new_len, 3), dtype=np.int64)
                 temp_bti = np.empty(shape=2*new_len, dtype=np.bool_)
                 for i in range(vertices_ID.shape[0]):
                     for j in range(3):
                         temp_vid[i, j] = vertices_ID[i, j]
                         temp_nid[i, j] = neighbour_ID[i, j]
                     temp_vid[i, 3] = vertices_ID[i, 3]
+                    temp_bti[i] = False
+                for i in range(vertices_ID.shape[0], 2*new_len):
                     temp_bti[i] = False
                 vertices_ID = temp_vid
                 neighbour_ID = temp_nid
@@ -926,7 +1008,7 @@ def split_encroached_segments(
             num_tri, old_tri, add_new_tri_flag = _make_Delaunay_ball_CDT(
                 point_id, bad_tri, bt_end, boundary_tri, boundary_end,
                 boundary_vtx, points, neighbour_ID, vertices_ID, num_tri, gv,
-                tri_ht_cap, tri_ht_arr)
+                tri_ht_cap, tri_ht_arr, bad_tri_indicator_arr)
 
             for i in range(boundary_end):
                 if i < bt_end:
@@ -1116,31 +1198,51 @@ def find_circumcenter(a, b, c, points):
     ex_1 = a_x - b_x
     ey_1 = a_y - b_y
     e0_1 = -(ex_1*p1_x + ey_1*p1_y)
-    if np.abs(ex_1) > np.abs(ey_1):
-        ey_1 /= ex_1
-        e0_1 = -(p1_x + ey_1*p1_y)
-        ex_1 = 1.0
-    else:
-        ex_1 /= ey_1
-        e0_1 = -(ex_1*p1_x + p1_y)
-        ey_1 = 1.0
+    # if np.abs(ex_1) > np.abs(ey_1):
+    #     ey_1 /= ex_1
+    #     e0_1 = -(p1_x + ey_1*p1_y)
+    #     ex_1 = 1.0
+    # else:
+    #     ex_1 /= ey_1
+    #     e0_1 = -(ex_1*p1_x + p1_y)
+    #     ey_1 = 1.0
 
     ex_2 = a_x - c_x
     ey_2 = a_y - c_y
     e0_2 = -(ex_2*p2_x + ey_2*p2_y)
-    if np.abs(ex_2) > np.abs(ey_2):
-        ey_2 /= ex_2
-        e0_2 = -(p2_x + ey_2*p2_y)
-        ex_2 = 1.0
-    else:
-        ex_2 /= ey_2
-        e0_2 = -(ex_2*p2_x + p2_y)
-        ey_2 = 1.0
+    # if np.abs(ex_2) > np.abs(ey_2):
+    #     ey_2 /= ex_2
+    #     e0_2 = -(p2_x + ey_2*p2_y)
+    #     ex_2 = 1.0
+    # else:
+    #     ex_2 /= ey_2
+    #     e0_2 = -(ex_2*p2_x + p2_y)
+    #     ey_2 = 1.0
 
 
     temp = ex_1*ey_2 - ey_1*ex_2
     circumcenter_x = (ey_1*e0_2 - e0_1*ey_2)/temp
     circumcenter_y = (e0_1*ex_2 - ex_1*e0_2)/temp
+
+    # if b_y == a_y:
+    #     # m_1 = inf
+    #     b_x, c_x = c_x, b_x
+    #     b_y, c_y = c_y, b_y
+    # if b_y == c_y:
+    #     # m_2 = inf
+    #     b_x, a_x = a_x, b_x
+    #     b_y, a_y = a_y, b_y
+    # m_1 = (a_x-b_x)/(b_y-a_y)
+    # x_1 = 0.5*(a_x+b_x)
+    # y_1 = 0.5*(a_y+b_y)
+    # m_2 = (b_x-c_x)/(c_y-b_y)
+    # x_2 = 0.5*(b_x+c_x)
+    # y_2 = 0.5*(b_y+c_y)
+    # circumcenter_x = (y_2-y_1)/(m_1-m_2)+(m_1*x_1-m_2*x_2)/(m_1-m_2)
+    # circumcenter_y = m_1*(y_2-m_2*x_2)/(m_1-m_2) + m_2*(m_1*x_1-y_1)/(m_1-m_2)
+
+    # circumcenter_x = (a_x + b_x + c_x)/3
+    # circumcenter_y = (a_y + b_y + c_y)/3
 
     return circumcenter_x, circumcenter_y
 
@@ -1482,14 +1584,17 @@ def final_assembly(
                 new_len = num_tri + boundary_end - bt_end
                 if new_len >= vertices_ID.shape[0]:
                     # new_len *= 2
+                    print('reallocating from {} to {}'.format(vertices_ID.shape[0], 2*new_len))
                     temp_vid = np.empty(shape=(2*new_len, 4), dtype=np.int64)
-                    temp_nid = np.empty(shape=(2*new_len, 3), dtype=np.int64)
+                    temp_nid = -1*np.ones(shape=(2*new_len, 3), dtype=np.int64)
                     temp_bti = np.empty(shape=2*new_len, dtype=np.bool_)
                     for i in range(vertices_ID.shape[0]):
                         for j in range(3):
                             temp_vid[i, j] = vertices_ID[i, j]
                             temp_nid[i, j] = neighbour_ID[i, j]
                         temp_vid[i, 3] = vertices_ID[i, 3]
+                        temp_bti[i] = False
+                    for i in range(vertices_ID.shape[0], 2*new_len):
                         temp_bti[i] = False
                     vertices_ID = temp_vid
                     neighbour_ID = temp_nid
@@ -1501,11 +1606,11 @@ def final_assembly(
                 num_tri, old_tri, add_new_tri_flag = _make_Delaunay_ball_CDT(
                     point_id, bad_tri, bt_end, boundary_tri, boundary_end,
                     boundary_vtx, points, neighbour_ID, vertices_ID, num_tri,
-                    gv, tri_ht_cap, tri_ht_arr)
+                    gv, tri_ht_cap, tri_ht_arr, bad_tri_indicator_arr)
 
                 for i in range(bt_end):
-                    t = bad_tri[i]
-                    bad_tri_indicator_arr[t] = False
+                    tri = bad_tri[i]
+                    bad_tri_indicator_arr[tri] = False
 
                 if add_new_tri_flag == True:
                     tri_ht_cap, tri_ht_arr = add_new_tri_to_tri_ht(
@@ -1521,6 +1626,10 @@ def final_assembly(
                 num_entities[0] = num_points
                 num_entities[2] = num_tri
             else:
+                for i in range(bt_end):
+                    tri = bad_tri[i]
+                    bad_tri_indicator_arr[tri] = False
+
                 num_points -= 1
                 a_x = points[a, 0]
                 a_y = points[a, 1]
@@ -1649,7 +1758,7 @@ class Terminator():
 
 
         self._vertices_ID = np.empty(shape=(2*(2*N - 2), 4), dtype=np.int64)
-        self._neighbour_ID = np.empty(shape=(2*(2*N - 2), 4), dtype=np.int64)
+        self._neighbour_ID = -1*np.ones(shape=(2*(2*N - 2), 3), dtype=np.int64)
         self._num_entities = np.asarray([N, num_segs, 0, N], dtype=np.int64)
         if insertion_points is None:
             self._insertion_points = np.asarray([])
@@ -1745,15 +1854,34 @@ def perf_segs():
 
 if __name__ == '__main__':
     # perf_segs()
+    import matplotlib.pyplot as plt
 
     from CDT.DT.data import make_data
     points, segments = make_data()
     insertion_points = np.array([[0.1, 0.05]])
     print('data made')
 
-    tri_ = Terminator(points, segments, insertion_points, min_angle=20.0)
+    for i in range(segments.shape[0]):
+        x = [ points[segments[i, 0], 0], points[segments[i, 1], 0] ]
+        y = [ points[segments[i, 0], 1], points[segments[i, 1], 1] ]
+        plt.plot(x, y, color='k', linewidth=0.75)
+    plt.show()
+    plt.clf()
+
+
+    def f(a_x, a_y, b_x, b_y, c_x, c_y):
+        area = (a_x - c_x)*(b_y - c_y) * (a_y - c_y)*(b_x - c_x)
+        if area < 0.0:
+            area *= -1.0
+        area *= 0.5
+        if area > 0.5:
+            return True
+        else:
+            return False
+
+    tri_ = Terminator(points, segments, insertion_points, min_angle=20)#, qual_f=f)
     points2, vertices = tri_.export_tri()
-    import matplotlib.pyplot as plt
-    plt.triplot(points2[:, 0], points2[:, 1], vertices)
+
+    plt.triplot(points2[:, 0], points2[:, 1], vertices, linewidth=0.75, color='k')
     plt.axis('equal')
     plt.show()
