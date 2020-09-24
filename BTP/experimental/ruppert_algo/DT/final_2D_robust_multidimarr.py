@@ -13,7 +13,7 @@ def njit(f=None, cache=None):
         def wrap(f):
             return f
         return wrap
-from numba import njit
+# from numba import njit
 
 
 @njit(cache=True)
@@ -324,8 +324,8 @@ def _make_Delaunay_ball(
 
     if boundary_tri_end < bad_tri_end:
         print("oops")
-        # print("boundary_tri_end : {}".format(boundary_tri_end))
-        # print("bad_tri_end : {}".format(bad_tri_end))
+        print("boundary_tri_end : {}".format(boundary_tri_end))
+        print("bad_tri_end : {}".format(bad_tri_end))
         old_tri = bad_tri[boundary_tri_end-1]
         for k in range(boundary_tri_end, bad_tri_end):
             tri = bad_tri[k]

@@ -2,6 +2,108 @@ import numpy as np
 from numba import njit
 
 
+
+@njit
+def _radix_argsort(points, indices, start, end, hist, hist_ends, level=-1):
+    '''
+    MSD radix sort
+    '''
+
+    array_size = end - start
+    if array_size == 0 or array_size == 1:
+        return
+
+    if level == -1:
+        max_p = points[start]
+        for i in range(start + 1, end):
+            if points[i] > max_p:
+                max_p = points[i]
+
+        highest_pos = 1
+        while max_p // 10 != 0:
+            highest_pos += 1
+            max_p = max_p // 10
+
+        level = highest_pos
+
+    # for i in range(highest_pos):
+    # print('\n level : {}'.format(level))
+
+    a = 10**level
+
+    for j in range(10):
+        hist[j] = 0
+
+    for j in range(start, end):
+        elem = (points[indices[j]] // a) % 10
+        hist[elem] += 1
+
+    # print('hist : {}'.format(hist))
+
+    hist_ends[0] = start
+    for j in range(1, 11):
+        hist_ends[j] = hist_ends[j - 1] + hist[j - 1]
+    # print('hist_ends : {}'.format(hist_ends))
+
+    # reusing hist for running_sum
+    for j in range(10):
+        hist[j] = 0
+
+    for j in range(start, end):
+        elem = (points[indices[j]] // a) % 10
+        pos = hist_ends[elem] + hist[elem]
+
+        # print('\n elem : {}, pos : {}'.format(elem, pos))
+
+        # if indices[j] == indices[pos]:
+        #     hist[elem] += 1
+
+        while (j < hist_ends[elem] or j >= hist_ends[elem + 1]):
+            # swap j and pos
+            temp = indices[j]
+            indices[j] = indices[pos]
+            indices[pos] = temp
+
+            hist[elem] += 1
+
+            elem = (points[indices[j]] // a) % 10
+            pos = hist_ends[elem] + hist[elem]
+            # if indices[j] == indices[pos]:
+            #     hist[elem] += 1
+            # print('elem : {}, pos : {}'.format(elem, pos))
+            # print('running_sum : {}'.format(hist))
+
+        hist[elem] += 1
+    # print('points : {}'.format(points[indices]))
+    # print('indices : {}'.format(indices))
+
+    if level > 0:
+        start_0 = hist_ends[0]
+        start_1 = hist_ends[1]
+        start_2 = hist_ends[2]
+        start_3 = hist_ends[3]
+        start_4 = hist_ends[4]
+        start_5 = hist_ends[5]
+        start_6 = hist_ends[6]
+        start_7 = hist_ends[7]
+        start_8 = hist_ends[8]
+        start_9 = hist_ends[9]
+        end = hist_ends[10]
+
+        _radix_argsort(points, indices, start_0, start_1, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_1, start_2, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_2, start_3, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_3, start_4, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_4, start_5, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_5, start_6, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_6, start_7, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_7, start_8, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_8, start_9, hist, hist_ends, level - 1)
+        _radix_argsort(points, indices, start_9, end, hist, hist_ends, level - 1)
+
+    return
+
+
 @njit
 def make_rounds(
     rounds,
@@ -172,8 +274,11 @@ def sort_along_hilbert_curve(
     org_points,
     hilbert_arr,
     p,
+    h_indices,
     new_indices,
     org_points_end,
+    hist,
+    hist_ends,
 ):
     '''
      org_points : 2N x 1; points to be sorted
@@ -216,6 +321,11 @@ def sort_along_hilbert_curve(
         max_xy = 1
 
     a = 2**p
+    highest_pos = 1
+    num = a
+    while num // 10 != 0:
+        highest_pos += 1
+        num = num // 10
 
     for i in range(org_points_end):
         x = org_points[i, 0]
@@ -224,9 +334,11 @@ def sort_along_hilbert_curve(
         x = np.round(((x-min_x)/max_xy)*(a-1), 0)
         y = np.round(((y-min_y)/max_xy)*(a-1), 0)
 
-        new_indices[i] = hilbert_arr[int(x), int(y)]
+        h_indices[i] = hilbert_arr[int(x), int(y)]
+        new_indices[i] = i
 
-    new_indices[0:org_points_end] = np.argsort(new_indices[0:org_points_end])
+    # new_indices[0:org_points_end] = np.argsort(h_indices[0:org_points_end])
+    _radix_argsort(h_indices, new_indices, 0, org_points_end, hist, hist_ends)
 
     return
 
@@ -238,9 +350,12 @@ def final_assembly(
     boundary_indices,
     hilbert_arr,
     org_points,
+    h_indices,
     new_indices,
     p,
-    insertion_seq
+    insertion_seq,
+    hist,
+    hist_ends,
 ):
 
     make_hilbert_curve(hilbert_arr, p)
@@ -253,8 +368,9 @@ def final_assembly(
             org_points[org_points_end, 1] = points[rounds[j], 1]
             org_points_end += 1
 
-        sort_along_hilbert_curve(org_points, hilbert_arr, p,
-                                 new_indices, org_points_end)
+        sort_along_hilbert_curve(
+            org_points, hilbert_arr, p, h_indices, new_indices, org_points_end,
+            hist, hist_ends)
 
         for j in range(boundary_indices[i+1]-1, boundary_indices[i]-1, -1):
             org_points_idx = new_indices[org_points_end-1]
@@ -294,10 +410,14 @@ def make_BRIO(points):
     org_points = np.empty(
         shape=(max_number_of_points_in_a_round, 2), dtype=np.float64)
     new_indices = np.empty(max_number_of_points_in_a_round, dtype=np.int64)
+    h_indices = np.empty(max_number_of_points_in_a_round, dtype=np.int64)
     insertion_seq = np.empty(num_points, dtype=np.int64)
+    hist = np.empty(shape=10, dtype=np.int64)
+    hist_ends = np.empty(shape=11, dtype=np.int64)
 
-    final_assembly(points, rounds, boundary_indices,hilbert_arr,
-                   org_points, new_indices, p, insertion_seq)
+    final_assembly(
+        points, rounds, boundary_indices, hilbert_arr, org_points, h_indices,
+        new_indices, p, insertion_seq, hist, hist_ends)
     new_points = points.copy()[insertion_seq]
 
     return insertion_seq, new_points
@@ -329,3 +449,16 @@ if __name__ == "__main__":
     import sys
     N = int(sys.argv[1])
     perf(N)
+
+    # hist = np.empty(shape=10, dtype=np.int64)
+    # hist_ends = np.empty(shape=11, dtype=np.int64)
+
+    # points = np.random.randint(low=0, high=N, size=N)
+    # indices = np.arange(N)
+    # print('points : {}'.format(points))
+    # print('indices : {}'.format(indices))
+
+    # _radix_argsort(points, indices, 0, N, hist, hist_ends)
+
+    # print('points : {}'.format(points[indices]))
+    # print('indices : {}'.format(indices))

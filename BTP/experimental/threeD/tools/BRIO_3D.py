@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 
 
-@njit
+@njit(cache=True)
 def make_rounds(
     rounds,
     boundary_indices,
@@ -66,7 +66,7 @@ def make_rounds(
     return
 
 
-@njit
+@njit(cache=True)
 def hindex2xyz(hindex, p):
     '''
     hindex : Hilbert index of the point
@@ -206,7 +206,7 @@ def hindex2xyz(hindex, p):
     return x, y, z
 
 
-@njit
+@njit(cache=True)
 def make_hilbert_curve(hilbert_arr, p):
     for i in range(2**(3*p)):
         x, y, z = hindex2xyz(i, p)
@@ -215,7 +215,7 @@ def make_hilbert_curve(hilbert_arr, p):
     return
 
 
-@njit
+@njit(cache=True)
 def sort_along_hilbert_curve(
     org_points,
     temp_points,
@@ -295,7 +295,7 @@ def sort_along_hilbert_curve(
     return
 
 
-@njit
+@njit(cache=True)
 def final_assembly(
     points,
     new_points,

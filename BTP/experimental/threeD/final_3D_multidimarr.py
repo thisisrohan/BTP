@@ -1,6 +1,6 @@
 import numpy as np
-import BTP.experimental.threeD.tools.BRIO_3D as BRIO
-from BTP.experimental.threeD.tools.adaptive_predicates import exactinit3d, orient3d, insphere
+import tools.BRIO_3D as BRIO
+from tools.adaptive_predicates import exactinit3d, orient3d, insphere
 
 
 def njit(f):
@@ -9,12 +9,12 @@ def njit(f):
 from numba import njit
 
 
-@njit
+@njit(cache=True)
 def cross_pdt(a_x, a_y, a_z, b_x, b_y, b_z):
     return a_y*b_z-a_z*b_y, -a_x*b_z+a_z*b_x, a_x*b_y-a_y*b_x
 
 
-@njit
+@njit(cache=True)
 def _calculate_sub_dets(points, final_sub_dets):
     '''
     Calculates and returns the sub-determinants of the given tet.
@@ -58,7 +58,7 @@ def _calculate_sub_dets(points, final_sub_dets):
     final_sub_dets[3] = D
 
 
-@njit
+@njit(cache=True)
 def _walk(
         point_id, t_index, vertices_ID, neighbour_ID, points, gv, global_arr,
         exactinit_arr):
@@ -160,7 +160,7 @@ def _walk(
     return t_index
 
 
-@njit
+@njit(cache=True)
 def _cavity_helper(
         point_id, t_index, points, vertices_ID, sub_determinants, gv,
         global_arr, exactinit_arr):
@@ -321,7 +321,7 @@ def _cavity_helper(
             return False
 
 
-@njit
+@njit(cache=True)
 def _identify_cavity(
         points, point_id, t_index, neighbour_ID, vertices_ID, sub_determinants,
         bad_tet, boundary_tet, boundary_vtx, boundary_index, gv, global_arr,
@@ -444,7 +444,7 @@ def _identify_cavity(
     return bad_tet, boundary_tet, boundary_vtx
 
 
-@njit
+@njit(cache=True)
 def _make_Delaunay_ball(
         point_id, bad_tets, boundary_tets, boundary_vtx, points, csd_final,
         csd_points, neighbour_ID, vertices_ID, sub_determinants,
@@ -625,7 +625,7 @@ def _make_Delaunay_ball(
     return neighbour_ID, vertices_ID, sub_determinants
 
 
-@njit
+@njit(cache=True)
 def assembly(
         csd_final, csd_points, bad_tet, boundary_tet, boundary_vtx, points,
         vertices_ID, neighbour_ID, sub_determinants, boundary_index,
@@ -780,7 +780,7 @@ def assembly(
     return vertices_ID, neighbour_ID, sub_determinants, path_cases_counter
 
 
-@njit
+@njit(cache=True)
 def TestNeighbours_njit(neighbour_ID, truth_array, truth_array_2):
 
     num_tet = int(len(neighbour_ID)*0.25)
@@ -796,14 +796,14 @@ def TestNeighbours_njit(neighbour_ID, truth_array, truth_array_2):
                     truth_array_2[t] = 0
 
 
-@njit
+@njit(cache=True)
 def TestNeighbours(neighbour_ID):
 
     num_tet = int(len(neighbour_ID)*0.25)
     truth_array = np.ones(shape=4*num_tet, dtype=np.bool_)
     truth_array_2 = np.ones(shape=num_tet, dtype=np.bool_)
 
-    TestNeighbours_njit(neighbour_ID, truth_array, truth_array_2)
+    TestNeighbours_njit(cache=True)(neighbour_ID, truth_array, truth_array_2)
 
     num_prob_tets = 0
     for i in range(num_tet):
@@ -885,7 +885,7 @@ def plot_tets(vertices_ID, num_tet, gv, points):
     plotter.show()
 
 
-@njit
+@njit(cache=True)
 def initialize(
         points, vertices_ID, gv, neighbour_ID, csd_final, csd_points,
         sub_determinants, global_arr, exactinit_arr):
@@ -1077,7 +1077,7 @@ class Delaunay3D:
                 indices[i] = 1
                 # counter += 1
         vertices = self.vertices_ID[indices, :]
-        sub_determinants = self.sub_determinants[indices, :]
+        # sub_determinants = self.sub_determinants[indices, :]
         # neighbors = self.neighbour_ID[indices]//4
 
         # ghost_tets = np.where(indices[0:4*self.num_tet:4] == False)[0]
@@ -1089,7 +1089,7 @@ class Delaunay3D:
         #     temp_idx = np.where(neighbors > gt)
         #     neighbors[temp_idx] -= 1
 
-        return points, vertices, sub_determinants  # , neighbors
+        return points, vertices  # , neighbors
 
     def export_VTK(self):
 
@@ -1100,13 +1100,10 @@ class Delaunay3D:
         counter = 0
 
         for i in np.arange(0, self.num_tet):
-            idx = np.where(self.vertices_ID[4*i:4*i+4] == self.gv)[0]
+            idx = np.where(self.vertices_ID[i, :] == self.gv)[0]
             if len(idx) == 0:
                 # i.e. i is not a ghost triangle
-                indices[4*i+0] = 1
-                indices[4*i+1] = 1
-                indices[4*i+2] = 1
-                indices[4*i+3] = 1
+                indices[i] = 1
                 counter += 1
         vertices = self.vertices_ID[indices]
         # print("vertices : \n" + str(vertices.reshape((counter, 4))))
@@ -1114,32 +1111,76 @@ class Delaunay3D:
 
         cells = 4*np.ones(shape=5*counter, dtype=np.int64)
         for i in range(4):
-            cells[i+1::5] = vertices[i::4]
+            cells[i+1::5] = vertices[:, i]
 
-        points = self.points.reshape(
-            (
-                int(len(self.points)/3),
-                3
-            )
-        )
+        points = self.points
 
-        # print("points : \n" + str(points[0:-1]))
 
         offset = np.arange(0, 5*counter, 5)
-
         cell_type = np.array([vtk.VTK_TETRA for i in range(counter)])
-
         grid = pv.UnstructuredGrid(offset, cells, cell_type, points)
+        # clipped = grid.clip('y', invert=False)
 
         plotter = pv.Plotter()
-        plotter.add_mesh(grid, show_edges=True)
+        plotter.add_mesh(grid, style='wireframe', show_edges=True)
+        # plotter.add_mesh(clipped, show_edges=True)
 
-        plotter.add_point_labels(
-            points,
-            np.arange(len(points)),
-            point_size=20,
-            font_size=36
-        )
+        '''
+        centroids = np.empty(shape=(vertices.shape[0], 3), dtype=np.float64)
+        for i in range(3):
+            centroids[:, i] = 0.25*(points[vertices[:, 0], i] +
+                                    points[vertices[:, 1], i] +
+                                    points[vertices[:, 2], i] +
+                                    points[vertices[:, 3], i])
+        nv_idx = np.where(centroids[:, 1] < 0.5)[0]
+        clipped_vtx = vertices[nv_idx]
+        counter_clipped = clipped_vtx.shape[0]
+        cells_clipped = 4*np.ones(shape=5*counter_clipped, dtype=np.int64)
+        for i in range(4):
+            cells_clipped[i+1::5] = clipped_vtx[:, i]
+        offset_clipped = np.arange(0, 5*counter_clipped, 5)
+        cell_type_clipped = np.array([vtk.VTK_TETRA for i in range(counter_clipped)])
+        grid_clipped = pv.UnstructuredGrid(
+            offset_clipped, cells_clipped, cell_type_clipped, points)
+        plotter.add_mesh(grid_clipped, show_edges=True)
+        '''
+        centroids = np.empty(shape=(vertices.shape[0], 3), dtype=np.float64)
+        for i in range(3):
+            centroids[:, i] = 0.25*(points[vertices[:, 0], i] +
+                                    points[vertices[:, 1], i] +
+                                    points[vertices[:, 2], i] +
+                                    points[vertices[:, 3], i])
+
+        max_y_coord = np.empty(shape=vertices.shape[0], dtype=np.float64)
+        for i in range(vertices.shape[0]):
+            yj = points[vertices[i, 0], 1]
+            for j in range(1, 4):
+                temp = points[vertices[i, j], 1]
+                if temp > yj:
+                    yj = temp
+            max_y_coord[i] = yj
+        nv_idx = np.where(max_y_coord < 0.9)[0]
+        nv_idx2 = np.where(centroids[:, 1] < 0.7)[0]
+        nv_idx = np.intersect1d(nv_idx, nv_idx2)
+        clipped_vtx = vertices[nv_idx]
+        counter_clipped = clipped_vtx.shape[0]
+        cells_clipped = 4*np.ones(shape=5*counter_clipped, dtype=np.int64)
+        for i in range(4):
+            cells_clipped[i+1::5] = clipped_vtx[:, i]
+        offset_clipped = np.arange(0, 5*counter_clipped, 5)
+        cell_type_clipped = np.array([vtk.VTK_TETRA for i in range(counter_clipped)])
+        grid_clipped = pv.UnstructuredGrid(
+            offset_clipped, cells_clipped, cell_type_clipped, points)
+        plotter.add_mesh(grid_clipped, show_edges=True)
+
+
+
+        # plotter.add_point_labels(
+        #     points,
+        #     np.arange(len(points)),
+        #     point_size=20,
+        #     font_size=36
+        # )
 
         plotter.show()
         # grid.save("mesh.vtk")
@@ -1158,7 +1199,7 @@ def perf(N):
     del temp_pts
     del tempDT
 
-    num_runs = 5
+    num_runs = 1
     times = np.empty(shape=num_runs, dtype=np.float64)
     for i in range(num_runs):
         np.random.seed(seed=i**2)
@@ -1168,6 +1209,7 @@ def perf(N):
         end = time.time()
         times[i] = end - start
         print("RUN {} : {} s".format(i+1, times[i]))
+        DT.export_VTK()
         del DT
         del points
 

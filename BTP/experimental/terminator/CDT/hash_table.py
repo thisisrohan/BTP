@@ -7,7 +7,7 @@ def njit(f=None, cache=None):
         def wrap(f):
             return f
         return wrap
-# from numba import njit
+from numba import njit
 
 
 @njit
@@ -105,9 +105,9 @@ def add_entry_seg_ht(v1, v2, seg_idx, seg_ht_cap, seg_ht_arr):
             if h_index >= seg_ht_cap:
                 h_index -= seg_ht_cap
             if h_index == h_index_org:
-                import sys
+                # import sys
                 print("went through entire seg_ht_arr and couldn't find place to insert")
-                sys.exit()
+                # sys.exit()
     seg_ht_arr[h_index, 0] = key
     seg_ht_arr[h_index, 1] = seg_idx
     return

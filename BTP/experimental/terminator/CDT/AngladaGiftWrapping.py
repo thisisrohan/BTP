@@ -12,7 +12,7 @@ def njit(f, cache=None):
         def wrap(v):
             return v
         return wrap
-# from numba import njit
+from numba import njit
 
 
 @njit
